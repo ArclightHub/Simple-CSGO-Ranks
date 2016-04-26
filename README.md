@@ -21,10 +21,11 @@ Copy all the zipped files into your sourcemod server directory.
 The plugin download link contains all of the sourcemod plugin files.
 The plugin works with MySQL, as such you will need to have one set up.
 The zip file contains a copy of databases.cfg that works with this mod.
-The following MySQL database and tables need to be created:
-CREATE DATABASE IF NOT EXISTS steam;
-CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+The following MySQL database and tables need to be created:<br><br>
+CREATE DATABASE IF NOT EXISTS steam;<br><br>
+CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;<br><br>
 CREATE TABLE `steamname` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `name` char(255) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
 
 It is also recommended that you increase the buffer pool if you have over 20000 players.
 innodb_buffer_pool_size=384M
@@ -45,9 +46,9 @@ The "Get Plugin" version is version 0.1.9.
 Many people have had trouble setting up MySQL and adding the databases on windows. Below you will find information for setting up MySQL:
 Step 1, Install the MySQL database server: https://www.youtube.com/watch?v=AqQc3YqfelE
 Step 2, Add the database and tables: https://www.youtube.com/watch?v=FAXhXI2Gxdc
-Follow the step 2 tutorial until you have used the "mysql -uroot" bit and then enter the following 4 lines of code into the command window:
-CREATE DATABASE IF NOT EXISTS steam;
-USE steam;
-CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-CREATE TABLE `steamname` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `name` char(255) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+Follow the step 2 tutorial until you have used the "mysql -uroot" bit and then enter the following 4 lines of code into the command window:<br><br>
+CREATE DATABASE IF NOT EXISTS steam;<br><br>
+USE steam;<br><br>
+CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;<br><br>
+CREATE TABLE `steamname` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `name` char(255) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;<br><br>
 Thats it. You are done. Your database is ready to go.
