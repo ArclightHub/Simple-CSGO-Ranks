@@ -40,8 +40,6 @@ Currently this addon is running on the "Gaming Zone Retake : 5v5 Ranked" server.
 If you wish to try the addon before you download it please feel free to join the server.
 IP: gamingzoneservers.com
 
-The "Get Plugin" version does NOT have colored text, only the one in the zip file does.
-The "Get Plugin" version is version 0.1.9.
 
 Many people have had trouble setting up MySQL and adding the databases on windows. Below you will find information for setting up MySQL:
 Step 1, Install the MySQL database server: https://www.youtube.com/watch?v=AqQc3YqfelE
@@ -52,3 +50,5 @@ USE steam;<br><br>
 CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;<br><br>
 CREATE TABLE `steamname` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `name` char(255) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;<br><br>
 Thats it. You are done. Your database is ready to go.
+
+You can also download the database files from the repo
