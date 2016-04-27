@@ -1,6 +1,6 @@
 # Simple-CSGO-Ranks
 
- SimpleCSGORanks is being coded as an alternative to paid mods such as gameme.
+ <a href="https://forums.alliedmods.net/showthread.php?p=2306795">SimpleCSGORanks</a> is being coded as an alternative to paid mods such as gameme.
 The aim of the SimpleCSGORanks project is to create a simple plugin to track players skill in a simple way.
 
 By Default:
