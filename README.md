@@ -15,21 +15,26 @@ Their recent activity variable is updated at the end of the round and time-stamp
 A player can check their rank by saying !rank
 A player can check the top 10/25 players by saying !top, !top10 or !top25
 
-Setup:
+<b>Setup:</b>
 
 Copy all the zipped files into your sourcemod server directory.
 The plugin download link contains all of the sourcemod plugin files.
 The plugin works with MySQL, as such you will need to have one set up.
 The zip file contains a copy of databases.cfg that works with this mod.
-The following MySQL database and tables need to be created:
+The following MySQL database and tables <b>NEED</b> to be either created or imported:
 <ul>
+<li>You can either download and import it as a .sql from <a href="https://github.com/ArclightHub/Simple-CSGO-Ranks/tree/master/databases">here</a></li>
+OR
+<li>You can add them manually with the following SQL statements:
+<br><ul>
 <li>CREATE DATABASE IF NOT EXISTS steam;</li>
 <li>CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;</li>
 <li>CREATE TABLE `steamname` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `name` char(255) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;</li>
+</ul></li>
 </ul>
 
 
-It is also recommended that you increase the buffer pool if you have over 20000 players.
+It is also recommended that you increase the buffer pool if you have over 20000 players.<br>
 innodb_buffer_pool_size=384M
 
 There are two console variables:
