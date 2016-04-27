@@ -49,7 +49,7 @@ Currently this addon is running on the "Gaming Zone Retake : 5v5 Ranked" server.
 If you wish to try the addon before you download it please feel free to join the server.
 IP: gamingzoneservers.com
 
-<b>Setup for newbies:</b><br><br>
+<b>MySQL setup on Windows:</b><br><br>
 Many people have had trouble setting up MySQL and adding the databases on windows. Below you will find information for setting up MySQL:
 <ul>
 <li>Step 1, Install the MySQL database server: <a href="https://www.youtube.com/watch?v=AqQc3YqfelE">Watch Video 1</a></li>
