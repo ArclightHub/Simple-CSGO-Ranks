@@ -21,18 +21,22 @@ Copy all the zipped files into your sourcemod server directory.
 The plugin download link contains all of the sourcemod plugin files.
 The plugin works with MySQL, as such you will need to have one set up.
 The zip file contains a copy of databases.cfg that works with this mod.
-The following MySQL database and tables need to be created:<br><br>
-CREATE DATABASE IF NOT EXISTS steam;<br><br>
-CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;<br><br>
-CREATE TABLE `steamname` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `name` char(255) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+The following MySQL database and tables need to be created:
+<ul>
+<li>CREATE DATABASE IF NOT EXISTS steam;</li>
+<li>CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;</li>
+<li>CREATE TABLE `steamname` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `name` char(255) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;</li>
+</ul>
 
 
 It is also recommended that you increase the buffer pool if you have over 20000 players.
 innodb_buffer_pool_size=384M
 
 There are two console variables:
-sm_simplecsgoranks_database: Allows changing of the database used from databases.cfg
-sm_simplecsgoranks_debug: Enable or disable advanced error messages. (0 or 1)
+<ul>
+<li>sm_simplecsgoranks_database<ul><li>Allows changing of the database used from databases.cfg</li></ul></li>
+<li>sm_simplecsgoranks_debug<ul><li>Enable or disable advanced error messages. (0 or 1)</li></ul></li>
+</ul>
 
 You may also want an updated version of the includes: "[INC] Multi Colors" from https://forums.alliedmods.net/showthread.php?t=247770
 The ranking data is able to be displayed on the server MOTD.
