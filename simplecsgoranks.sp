@@ -411,7 +411,7 @@ public void copyOut()
 		
 		if(defuser != -1)
 		{	
-			if(IsClientConnected(defuser))
+			if(IsClientConnected(defuser) && !IsFakeClient(defuser))
 			{
 				GetClientName(defuser, name3, sizeof(name3)); //got shot
 				GetClientAuthId(defuser, AuthId_Steam3, steamId3, sizeof(steamId3));
@@ -433,7 +433,7 @@ public void copyOut()
 			client3 = assister[shotCountdown];
 			
 			//check if they are connected
-			if(IsClientConnected(client) && IsClientConnected(client2))
+			if(IsClientConnected(client) && IsClientConnected(client2) && !IsFakeClient(client) && !IsFakeClient(client2))
 			{
 				
 
@@ -468,7 +468,7 @@ public void copyOut()
 			}
 			//Assister
 			if(client3 > 0){
-				if(IsClientConnected(client3))
+				if(IsClientConnected(client3) && !IsFakeClient(client3))
 				{
 					GetClientAuthId(client3, AuthId_Steam3, steamId4, sizeof(steamId4));
 					ReplaceString(steamId4, sizeof(steamId4), "[U:1:", "", false);
