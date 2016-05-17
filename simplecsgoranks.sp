@@ -9,7 +9,7 @@
 #include <multicolors>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.0"
+#define PLUGIN_VERSION "0.2.1Dev"
 
 //Global Variables, do NOT touch.
 bool ready = false;
@@ -31,6 +31,7 @@ new String:topRanks[50][128];
 
 //convars
 ConVar sm_simplecsgoranks_database;
+ConVar sm_simplecsgoranks_cleaning;
 ConVar sm_simplecsgoranks_debug;
 	
 
@@ -39,7 +40,6 @@ int printToServer = 0;
 int higherRankThreshold = 200; //how many points above a user should me considered much higher
 int higherRankFactor = 5; //if the shot user is much higher than the user who shot them the higher ranked user should lose more rank.
 int startRank = 100; //new users start with this rank.
-int dbCleaning = 1;
 
 //begin
 public Plugin:myinfo =
@@ -93,7 +93,7 @@ public void addRank(int steamId, int points)
 
 public void purgeOldUsers() 
 {
-	if(dbCleaning == 0 ) return;
+	if( GetCleaningConvar() == 0 ) return;
 	//purges the database of all old users
 
 	if (!SQL_FastQuery(dbc, "DELETE FROM steam WHERE age < ((SELECT UNIX_TIMESTAMP()) - (3600*24*60))"))
@@ -505,15 +505,24 @@ public void GetDatabaseConvar()
 	Format(databaseNew, sizeof(databaseNew), "%s", buffer);
 }
 
+public void GetCleaningConvar()
+{
+	char buffer[128]
+	sm_simplecsgoranks_cleaning.GetString(buffer, 128)
+	return StringToInt(buffer);
+}
+
 //called at start of plugin, sets everything up.
 public OnPluginStart()
 {
 	sm_simplecsgoranks_database = CreateConVar("sm_simplecsgoranks_database", "default", "Allows changing of the database used from databases.cfg")
+	sm_simplecsgoranks_cleaning = CreateConVar("sm_simplecsgoranks_cleaning", "1", "Cleans the database of players who have no kills for more than two months.")
 	sm_simplecsgoranks_debug = CreateConVar("sm_simplecsgoranks_debug", "0", "Enable or disable advanced error messages. (0 or 1)")
 
 	int flags = sm_simplecsgoranks_database.Flags;
 	flags &= ~FCVAR_PROTECTED;
 	sm_simplecsgoranks_database.Flags = flags;
+	sm_simplecsgoranks_cleaning.Flags = flags;
 	sm_simplecsgoranks_debug.Flags = flags;
 	
 	GetDatabaseConvar();
@@ -590,15 +599,18 @@ public Action:Event_RoundStart (Handle:event, const String:name[], bool:dontBroa
 //event is called every time a player dies.
 public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {	
-	if(!ready) return Plugin_Continue;
-	if(GetClientOfUserId(GetEventInt(event, "userid")) == 0 ||  GetClientOfUserId(GetEventInt(event, "attacker")) == 0) return Plugin_Continue; //fix
+	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
+	int assister = GetClientOfUserId(GetEventInt(event, "assister"));
+	int userId = GetClientOfUserId(GetEventInt(event, "userid"));
+	if(!ready && !IsFakeClient(attacker) && !IsFakeClient(userId)) return Plugin_Continue;
+	if(userId == 0 ||  attacker == 0) return Plugin_Continue; //fix
 	if(shotPlayers < 0) shotPlayers = 0; //out of range check //This happens on the first kill of each round. If no kills occur in a round this prevents it from crashing. its essential
 	if(shotPlayers > 254) copyOut(); //if the buffer fills because you use a dumb addon that allows more than 32 players per team dont let it crash
-	if(GetClientTeam(GetClientOfUserId(GetEventInt(event, "userid"))) != GetClientTeam(GetClientOfUserId(GetEventInt(event, "attacker"))))
+	if(GetClientTeam(userId) != attacker))
 	{	
-		shooter[shotPlayers] = GetClientOfUserId(GetEventInt(event, "attacker")); //the shooter
-		assister[shotPlayers] = GetClientOfUserId(GetEventInt(event, "assister")); //the shooter
-		shot[shotPlayers] = GetClientOfUserId(GetEventInt(event, "userid")); //the guy who got shot
+		shooter[shotPlayers] = attacker; //the shooter
+		assister[shotPlayers] = assister; //the assister
+		shot[shotPlayers] = userId; //the guy who got shot
 		if(printToServer == 1) PrintToServer("Added %d and %d to array.", shooter[shotPlayers], shot[shotPlayers]);
 		shotPlayers++;
 	}
