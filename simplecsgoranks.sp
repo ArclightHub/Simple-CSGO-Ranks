@@ -773,7 +773,7 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 	int assist = GetClientOfUserId(GetEventInt(event, "assister"));
 	int userId = GetClientOfUserId(GetEventInt(event, "userid"));
-	if(!ready && !IsFakeClient(attacker) && !IsFakeClient(userId)) return Plugin_Continue;
+	if(!ready || IsFakeClient(attacker) || IsFakeClient(userId)) return Plugin_Continue;
 	if(userId == 0 ||  attacker == 0) return Plugin_Continue; //fix
 	if(shotPlayers < 0) shotPlayers = 0; //out of range check //This happens on the first kill of each round. If no kills occur in a round this prevents it from crashing. its essential
 	if(shotPlayers > 254) {
