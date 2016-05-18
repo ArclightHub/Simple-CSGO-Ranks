@@ -215,6 +215,11 @@ public Action:Timer_Cache(Handle:timer)
 {
 	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
 	new maxclients = GetMaxClients();
+	int skipped = 0;
+	while(!IsClientInGame(1+cacheCurrentClient%maxclients) && skipped < maxclients)
+	{
+		cacheCurrentClient++;
+	}
 	PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) {
 		//if the spot is empty
@@ -723,7 +728,7 @@ public OnPluginStart()
 		databaseCheck = databaseName; //update it
 
 		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		if(threadedWorker == 1) CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
+		if(threadedWorker == 1) CreateTimer(2.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
 	}
 	else{
 		PrintToServer("Database Failure. Please make sure your MySQL database is correctly set up. If you believe it is please check the databases.cfg file, check the permissions and check the port."); //inform the user that its broken
