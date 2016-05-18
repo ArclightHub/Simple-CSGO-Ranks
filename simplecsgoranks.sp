@@ -66,8 +66,11 @@ public Plugin:myinfo =
 };
 
 //sets a clients rank, checks if the client exists and then updates the rank, else it adds the user with a zero rank.
-public void setRank(int steamId, int rank) //done
+public void setRank(int steamId, int rank, int client) //done
 {
+	rankCache[client] = rank;
+	rankCacheValidate[client] = 1; //revalidate once this is done
+
 	//time
 	new String:stime[65];
 	IntToString(GetTime(),stime,sizeof(stime));
@@ -98,10 +101,10 @@ public void setRank(int steamId, int rank) //done
 }
 
 //adds the given number of points to the given user
-public void addRank(int steamId, int points)
+public void addRank(int steamId, int points, int client)
 {
 	//setRank(steamId, (getRank(steamId) + points));
-	setRank(steamId, (getRankCached(steamId, 0, 0, 1) + points));
+	setRank(steamId, (getRankCached(steamId, 0, 0, 0) + points), client);
 }
 
 public void purgeOldUsers() 
@@ -181,7 +184,7 @@ public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:clie
 	{
 		SQL_FetchString(HQuery, 0, data, sizeof(data));
 		rankCache[client] = StringToInt(data);
-		rankCacheValidate[client] = 1; 
+		rankCacheValidate[client] = 1;  //Validate once the data is copied
 	}
 
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
@@ -193,7 +196,7 @@ public Action:Timer_Cache(Handle:timer)
 	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
 	if(!IsClientInGame(cacheCurrentClient)) {
 		//if the spot is empty
-		rankCacheValidate[cacheCurrentClient] = 0; //invalidate the spot
+		rankCacheValidate[cacheCurrentClient] = 0; //invalidate the empty spot
 		cacheCurrentClient++; //move on to the next spot
 		return Plugin_Continue; //wait until the next call so we dont waste CPU cycles, after all this is a background task
 	}
@@ -339,9 +342,22 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 	IntToString(GetTime(),stime,sizeof(stime));
 	IntToString(steamId1,ssteamId1,sizeof(ssteamId1));
 	IntToString(steamId2,ssteamId2,sizeof(ssteamId2));
-		
-	rankCacheValidate[client] = 0;
-	rankCacheValidate[client2] = 0;
+	
+	if(rankCacheValidate[client] == 1 && rankCacheValidate[client2] == 1){
+		if(rankCache[client]+higherRankThreshold < rankCache[client2]){
+			rankCache[client] += 5+higherRankFactor; 
+			rankCache[client2] -= 6+higherRankFactor;
+		}
+		else{
+			rankCache[client] += 5; 
+			rankCache[client2] -= 6;
+		}
+	}
+	else{
+		rankCacheValidate[client] = 0;
+		rankCacheValidate[client2] = 0;
+	}
+
 
 	Format(query, sizeof(query), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank+%d+%d ELSE rank+%d END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId1, stime, ssteamId1);
 	Format(query2, sizeof(query2), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank-%d-%d ELSE rank-%d-1 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId2, stime, ssteamId2);
@@ -522,7 +538,7 @@ public void copyOut()
 				ReplaceString(steamId3, sizeof(steamId3), "[U:0:", "", false);
 				ReplaceString(steamId3, sizeof(steamId3), "]", "", false);
 				PrintToChatAll("%s has defused the bomb! +5 rank!", name3);
-				addRank(StringToInt(steamId3), 5);		
+				addRank(StringToInt(steamId3), 5, defuser);		
 			}
 			defuser = -1; //ready the variable for the next round
 		}
@@ -580,7 +596,7 @@ public void copyOut()
 					GetClientName(client3, name4, sizeof(name4));
 					
 					//add +2 for assist
-					addRank(StringToInt(steamId4), 2);
+					addRank(StringToInt(steamId4), 2, client3);
 					
 					//CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4, getRank(StringToInt(steamId4)) );
 					CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
