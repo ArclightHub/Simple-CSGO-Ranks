@@ -14,20 +14,28 @@
 //Global Variables, do NOT touch.
 bool ready = false;
 int shotPlayers = -1;
-int shooter[255];//[65]; //allows for 32vs32 //array of clients
-int assister[255];//[65]; //allows for 32vs32 //array of clients
-int shot[255];//[65];
 int defuser = -1; //guy who defused the bomb type is CLIENT!!
 int shotCountdown = 0;
 Handle dbc;
 char errorc[255];
 float copyTime;
+
+int dbLocked = 0;
+int rankCache[64]; //Caches ranks for threaded operation (Soon TM)
+int rankCacheValidate[64]; //Validation
+int cacheCurrentClient = 1;
+char asyncQuery[440];
+
+//Global Variables, you can touch.
 int ranksText[320];
 new String:databaseName[128] = "default";
 new String:databaseNew[128] = "default";
 new String:databaseCheck[128] = "default";
 new String:ranksText2[65][65];
 new String:topRanks[50][128];
+int shooter[255];//array of clients
+int assister[255];//array of clients
+int shot[255];
 
 //convars
 ConVar sm_simplecsgoranks_kill_points;
@@ -92,9 +100,8 @@ public void setRank(int steamId, int rank) //done
 //adds the given number of points to the given user
 public void addRank(int steamId, int points)
 {
-	int existingRank = getRank(steamId);
-	int newRank = existingRank + points;	
-	setRank(steamId, newRank);
+	//setRank(steamId, (getRank(steamId) + points));
+	setRank(steamId, (getRankCached(steamId, 0, 0, 1) + points));
 }
 
 public void purgeOldUsers() 
@@ -154,6 +161,90 @@ public void newUser(int steamId) //done
 
 	return;
 }
+
+public int getSteamIdNumber(int client)
+{
+	decl String:steamId[64]; //defused the bomb
+	GetClientAuthId(client, AuthId_Steam3, steamId, sizeof(steamId));
+	ReplaceString(steamId, sizeof(steamId), "[U:1:", "", false);
+	ReplaceString(steamId, sizeof(steamId), "[U:0:", "", false);
+	ReplaceString(steamId, sizeof(steamId), "]", "", false);
+
+	return StringToInt(steamId);
+}
+
+//Threaded code
+public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
+{
+	new String:data[65]
+	while (SQL_FetchRow(HQuery))
+	{
+		SQL_FetchString(HQuery, 0, data, sizeof(data));
+		rankCache[client] = StringToInt(data);
+		rankCacheValidate[client] = 1; 
+	}
+
+	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
+	dbLocked = 0; //unlock db after everything is done
+}
+
+public Action:Timer_Cache(Handle:timer)
+{
+	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
+
+	new maxclients = GetMaxClients();
+
+	decl String:steamId[64]; //defused the bomb
+	GetClientAuthId(cacheCurrentClient%maxclients, AuthId_Steam3, steamId, sizeof(steamId));
+	ReplaceString(steamId, sizeof(steamId), "[U:1:", "", false);
+	ReplaceString(steamId, sizeof(steamId), "[U:0:", "", false);
+	ReplaceString(steamId, sizeof(steamId), "]", "", false);
+
+	new String:query[128];
+	query = "SELECT rank FROM steam WHERE steamId = "
+	StrCat(steamId, sizeof(steamId), " LIMIT 1"); //limit optimisation
+	StrCat(query, sizeof(query), steamId); //done
+
+	if(dbc == INVALID_HANDLE){ 
+		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+		SQL_GetError(dbc, errorc, sizeof(errorc));
+		PrintToServer("Failed to query (error: %s)", errorc);
+	}
+	dbLocked = 1; //Lock our own DB
+	SQL_TQuery(dbc, queryCallback, asyncQuery, cacheCurrentClient);
+
+	cacheCurrentClient++;
+	return Plugin_Continue;
+}
+
+public int getRankCached(int steamId, int usesClient, int client, int invalidateCache)
+{
+//needs all entered, if it fails to lookup from just client it falls back to the existing method
+//getRankCached(id, usesclient, client, invalidateCache)
+	int currentClient = -1;
+	if(usesClient == 1) currentClient = client;
+	else //Need to look up the client from the array
+	{
+		new maxclients = GetMaxClients()
+		for(new i=1; i <= maxclients; i++)
+		{
+			if(getSteamIdNumber(i) == steamId) 
+			{
+				currentClient = getSteamIdNumber(i);
+				break;
+			}
+		}
+	}
+	if(currentClient == -1) return getRank(steamId); //failed to look up client
+	else if(rankCacheValidate[currentClient] == 0){
+		return getRank(steamId);
+	}
+	else{
+		if(invalidateCache == 1) rankCacheValidate[currentClient] = 0; //invalidate the cached copy, this flag is used when the query changes the rank
+		return rankCache[currentClient]; //return the cached copy
+	}
+}
+//end Threaded
 
 //this is called whenever the rank command is used or another method needs to get a rank
 public int getRank(int steamId)
@@ -460,8 +551,8 @@ public void copyOut()
 				//print out info
 				GetClientName(client, name1, sizeof(name1)); //shooter
 				GetClientName(client2, name2, sizeof(name2)); //got shot
-				CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRank(StringToInt(steamId1)), name2, getRank(StringToInt(steamId2)) );
-				
+				//CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRank(StringToInt(steamId1)), name2, getRank(StringToInt(steamId2)) );
+				CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
 				updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
 				updateName(StringToInt(steamId2), name2);
 
@@ -484,7 +575,8 @@ public void copyOut()
 					//add +2 for assist
 					addRank(StringToInt(steamId4), 2);
 					
-					CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4, getRank(StringToInt(steamId4)) );
+					//CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4, getRank(StringToInt(steamId4)) );
+					CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
 				}
 			}
 			shotCountdown++;
@@ -584,6 +676,7 @@ public OnPluginStart()
 		//dbc = SQL_DefConnect(errorc, sizeof(errorc)); //open the connection that will be used for the rest of the time
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		databaseCheck = databaseName; //update it
+		CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //begin caching data
 	}
 	else{
 		PrintToServer("Database Failure. Please make sure your MySQL database is correctly set up. If you believe it is please check the databases.cfg file, check the permissions and check the port."); //inform the user that its broken
@@ -618,7 +711,9 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 	if(shotPlayers > -1)CPrintToChatAll("{orange}----Round Over----");//PrintToChatAll("----Round Over----"); //PLUGIN_VERSION
 	if(shotPlayers > -1)CPrintToChatAll("{green}SimpleCSGORanks v%s", PLUGIN_VERSION);
 	if(shotPlayers > -1)CPrintToChatAll("{darkred}Calculating kills and ranks.");//PrintToChatAll("Pausing game: Calculating kills and ranks.");
+	dbLocked = 1;
 	copyOut();
+	dbLocked = 0;
 	
 	CPrintToChatAll("{green} -- New Round --");
 	}
@@ -642,7 +737,11 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 	if(!ready && !IsFakeClient(attacker) && !IsFakeClient(userId)) return Plugin_Continue;
 	if(userId == 0 ||  attacker == 0) return Plugin_Continue; //fix
 	if(shotPlayers < 0) shotPlayers = 0; //out of range check //This happens on the first kill of each round. If no kills occur in a round this prevents it from crashing. its essential
-	if(shotPlayers > 254) copyOut(); //if the buffer fills because you use a dumb addon that allows more than 32 players per team dont let it crash
+	if(shotPlayers > 254) {
+	dbLocked = 1;
+	copyOut(); //if the buffer fills because you use a dumb addon that allows more than 32 players per team dont let it crash
+	dbLocked = 0;
+	}
 	if(GetClientTeam(userId) != GetClientTeam(attacker))
 	{	
 		shooter[shotPlayers] = attacker; //the shooter
@@ -713,7 +812,8 @@ public updateRanksText(){
 			ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
 			ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
 			ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
-			ranksText[i] = getRank(StringToInt(steamId1));
+			//ranksText[i] = getRank(StringToInt(steamId1));
+			ranksText[i] = getRankCached(StringToInt(steamId1), 1, i, 0);
 			getRank2(StringToInt(steamId1), i);
 		}
 	}
