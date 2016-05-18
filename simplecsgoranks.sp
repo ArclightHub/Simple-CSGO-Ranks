@@ -25,7 +25,6 @@ int dbLocked = 0;
 int rankCache[64]; //Caches ranks for threaded operation (Soon TM)
 int rankCacheValidate[64]; //Validation
 int cacheCurrentClient = 1;
-char asyncQuery[440];
 
 //Global Variables, you can touch.
 int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
@@ -186,19 +185,25 @@ public OnClientPostAdminCheck(client){
 }
 
 public OnClientDisconnect(client){
-	rankCacheValidate[cacheCurrentClient] = 0;
+	new maxclients = GetMaxClients();
+	rankCacheValidate[cacheCurrentClient%maxclients] = 0;
 	return;
 }
 
 //Threaded code
 public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
-	new String:data[65]
-	while (SQL_FetchRow(HQuery))
-	{
-		SQL_FetchString(HQuery, 0, data, sizeof(data));
-		rankCache[client] = StringToInt(data);
-		rankCacheValidate[client] = 1;  //Validate once the data is copied
+	if(HQuery == INVALID_HANDLE){
+		PrintToServer("Query failed! %s", error);
+	}
+	else{
+		new String:data[65]
+		if(SQL_FetchRow(HQuery))
+		{
+			SQL_FetchString(HQuery, 0, data, sizeof(data));
+			rankCache[client] = StringToInt(data);
+			rankCacheValidate[client] = 1;  //Validate once the data is copied
+		}
 	}
 
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
@@ -208,14 +213,14 @@ public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:clie
 public Action:Timer_Cache(Handle:timer)
 {
 	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
-	if(!IsClientInGame(cacheCurrentClient)) {
+	new maxclients = GetMaxClients();
+	if(!IsClientInGame(cacheCurrentClient%maxclients)) {
 		//if the spot is empty
-		rankCacheValidate[cacheCurrentClient] = 0; //invalidate the empty spot
+		rankCacheValidate[cacheCurrentClient%maxclients] = 0; //invalidate the empty spot
 		cacheCurrentClient++; //move on to the next spot
 		return Plugin_Continue; //wait until the next call so we dont waste CPU cycles, after all this is a background task
 	}
-	new maxclients = GetMaxClients();
-
+	
 	decl String:steamId[64]; //defused the bomb
 	GetClientAuthId(cacheCurrentClient%maxclients, AuthId_Steam3, steamId, sizeof(steamId));
 	ReplaceString(steamId, sizeof(steamId), "[U:1:", "", false);
@@ -223,7 +228,7 @@ public Action:Timer_Cache(Handle:timer)
 	ReplaceString(steamId, sizeof(steamId), "]", "", false);
 
 	new String:query[128];
-	query = "SELECT rank FROM steam WHERE steamId = "
+	query = "SELECT rank FROM steam WHERE steamId = ";
 	StrCat(steamId, sizeof(steamId), " LIMIT 1"); //limit optimisation
 	StrCat(query, sizeof(query), steamId); //done
 
@@ -233,7 +238,7 @@ public Action:Timer_Cache(Handle:timer)
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	dbLocked = 1; //Lock our own DB
-	SQL_TQuery(dbt, queryCallback, asyncQuery, cacheCurrentClient);
+	SQL_TQuery(dbt, queryCallback, query, cacheCurrentClient%maxclients);
 
 	cacheCurrentClient++;
 	return Plugin_Continue;
@@ -252,11 +257,12 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 		{
 			if(getSteamIdNumber(i) == steamId) 
 			{
-				currentClient = getSteamIdNumber(i);
+				currentClient = i;//getSteamIdNumber(i);
 				break;
 			}
 		}
 	}
+	PrintToServer("Current Client %d", currentClient);
 	if(currentClient == -1) return getRank(steamId); //failed to look up client
 	else if(rankCacheValidate[currentClient] == 0){
 		return getRank(steamId);
