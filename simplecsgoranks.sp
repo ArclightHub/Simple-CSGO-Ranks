@@ -218,6 +218,7 @@ public Action:Timer_Cache(Handle:timer)
 	int skipped = 0;
 	while(!IsClientInGame(1+cacheCurrentClient%maxclients) && skipped < maxclients)
 	{
+		skipped++;
 		cacheCurrentClient++;
 	}
 	if(printToServer == 1) PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
