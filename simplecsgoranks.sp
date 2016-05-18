@@ -30,6 +30,10 @@ new String:ranksText2[65][65];
 new String:topRanks[50][128];
 
 //convars
+ConVar sm_simplecsgoranks_kill_points;
+ConVar sm_simplecsgoranks_higher_rank_additional;
+ConVar sm_simplecsgoranks_higher_rank_gap;
+
 ConVar sm_simplecsgoranks_database;
 ConVar sm_simplecsgoranks_cleaning;
 ConVar sm_simplecsgoranks_debug;
@@ -39,6 +43,7 @@ ConVar sm_simplecsgoranks_debug;
 int printToServer = 0;
 int higherRankThreshold = 200; //how many points above a user should me considered much higher
 int higherRankFactor = 5; //if the shot user is much higher than the user who shot them the higher ranked user should lose more rank.
+int killPoints = 5;
 int startRank = 100; //new users start with this rank.
 
 //begin
@@ -240,8 +245,8 @@ public void userShot(int steamId1, int steamId2) //done
 	IntToString(steamId2,ssteamId2,sizeof(ssteamId2));
 		
 
-	Format(query, sizeof(query), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank+5+%d ELSE rank+5 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, higherRankFactor, ssteamId1, stime, ssteamId1);
-	Format(query2, sizeof(query2), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank-6-%d ELSE rank-6 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, higherRankFactor, ssteamId2, stime, ssteamId2);
+	Format(query, sizeof(query), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank+%d+%d ELSE rank+%d END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId1, stime, ssteamId1);
+	Format(query2, sizeof(query2), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank-%d-%d ELSE rank-%d-1 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId2, stime, ssteamId2);
 
 	if(printToServer == 1) PrintToServer("query: %s", query);	
 	
@@ -491,6 +496,25 @@ public void copyOut()
 }
 
 //steam stuff
+public int GetKillPointsConvar()
+{
+	char buffer[128]
+	sm_simplecsgoranks_kill_points.GetString(buffer, 128)
+	return (StringToInt(buffer) ? StringToInt(buffer) : 5 );
+}
+public int GetHigherRankAdditionalConvar()
+{
+	char buffer[128]
+	sm_simplecsgoranks_higher_rank_additional.GetString(buffer, 128)
+	return (StringToInt(buffer) ? StringToInt(buffer) : 5 );
+}
+public int GetHigherRankGapConvar()
+{
+	char buffer[128]
+	sm_simplecsgoranks_higher_rank_gap.GetString(buffer, 128)
+	return (StringToInt(buffer) ? StringToInt(buffer) : 200 );
+}
+
 public int GetDebugConvar()
 {
 	char buffer[128]
@@ -505,7 +529,7 @@ public void GetDatabaseConvar()
 	Format(databaseNew, sizeof(databaseNew), "%s", buffer);
 }
 
-public void GetCleaningConvar()
+public int GetCleaningConvar()
 {
 	char buffer[128]
 	sm_simplecsgoranks_cleaning.GetString(buffer, 128)
@@ -515,6 +539,10 @@ public void GetCleaningConvar()
 //called at start of plugin, sets everything up.
 public OnPluginStart()
 {
+	sm_simplecsgoranks_kill_points = CreateConVar("sm_simplecsgoranks_kill_points", "5", "The number of points gained per kill")
+	sm_simplecsgoranks_higher_rank_additional = CreateConVar("sm_simplecsgoranks_higher_rank_additional", "5", "Additional points gained when killing a higher ranked player.")
+	sm_simplecsgoranks_higher_rank_gap = CreateConVar("sm_simplecsgoranks_higher_rank_gap", "500", "Difference between players ranks needed to consider one to be a higher ranked player.")
+
 	sm_simplecsgoranks_database = CreateConVar("sm_simplecsgoranks_database", "default", "Allows changing of the database used from databases.cfg")
 	sm_simplecsgoranks_cleaning = CreateConVar("sm_simplecsgoranks_cleaning", "1", "Cleans the database of players who have no kills for more than two months.")
 	sm_simplecsgoranks_debug = CreateConVar("sm_simplecsgoranks_debug", "0", "Enable or disable advanced error messages. (0 or 1)")
@@ -524,7 +552,15 @@ public OnPluginStart()
 	sm_simplecsgoranks_database.Flags = flags;
 	sm_simplecsgoranks_cleaning.Flags = flags;
 	sm_simplecsgoranks_debug.Flags = flags;
+	sm_simplecsgoranks_kill_points.Flags = flags;
+	sm_simplecsgoranks_higher_rank_additional.Flags = flags;
+	sm_simplecsgoranks_higher_rank_gap.Flags = flags;
 	
+	if(GetHigherRankGapConvar()) higherRankThreshold = GetHigherRankGapConvar();
+	if(GetHigherRankAdditionalConvar()) higherRankFactor = GetHigherRankAdditionalConvar();
+	if(GetKillPointsConvar()) killPoints = GetKillPointsConvar();
+
+	GetDebugConvar();
 	GetDatabaseConvar();
 	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
 	if(GetDebugConvar() == 1) printToServer = 1;
@@ -600,16 +636,16 @@ public Action:Event_RoundStart (Handle:event, const String:name[], bool:dontBroa
 public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroadcast)
 {	
 	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
-	int assister = GetClientOfUserId(GetEventInt(event, "assister"));
+	int assist = GetClientOfUserId(GetEventInt(event, "assister"));
 	int userId = GetClientOfUserId(GetEventInt(event, "userid"));
 	if(!ready && !IsFakeClient(attacker) && !IsFakeClient(userId)) return Plugin_Continue;
 	if(userId == 0 ||  attacker == 0) return Plugin_Continue; //fix
 	if(shotPlayers < 0) shotPlayers = 0; //out of range check //This happens on the first kill of each round. If no kills occur in a round this prevents it from crashing. its essential
 	if(shotPlayers > 254) copyOut(); //if the buffer fills because you use a dumb addon that allows more than 32 players per team dont let it crash
-	if(GetClientTeam(userId) != attacker))
+	if(GetClientTeam(userId) != GetClientTeam(attacker))
 	{	
 		shooter[shotPlayers] = attacker; //the shooter
-		assister[shotPlayers] = assister; //the assister
+		assister[shotPlayers] = assist; //the assister
 		shot[shotPlayers] = userId; //the guy who got shot
 		if(printToServer == 1) PrintToServer("Added %d and %d to array.", shooter[shotPlayers], shot[shotPlayers]);
 		shotPlayers++;
