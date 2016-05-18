@@ -22,8 +22,8 @@ char errorc[255];
 float copyTime;
 
 int dbLocked = 0;
-int rankCache[64]; //Caches ranks for threaded operation (Soon TM)
-int rankCacheValidate[64]; //Validation
+int rankCache[65]; //Caches ranks for threaded operation (Soon TM)
+int rankCacheValidate[65]; //Validation
 int cacheCurrentClient = 1;
 
 //Global Variables, you can touch.
@@ -186,7 +186,7 @@ public OnClientPostAdminCheck(client){
 
 public OnClientDisconnect(client){
 	new maxclients = GetMaxClients();
-	rankCacheValidate[cacheCurrentClient%maxclients] = 0;
+	rankCacheValidate[1+cacheCurrentClient%maxclients] = 0;
 	return;
 }
 
@@ -214,15 +214,16 @@ public Action:Timer_Cache(Handle:timer)
 {
 	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
 	new maxclients = GetMaxClients();
-	if(!IsClientInGame(cacheCurrentClient%maxclients)) {
+	PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
+	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) {
 		//if the spot is empty
-		rankCacheValidate[cacheCurrentClient%maxclients] = 0; //invalidate the empty spot
+		rankCacheValidate[1+cacheCurrentClient%maxclients] = 0; //invalidate the empty spot
 		cacheCurrentClient++; //move on to the next spot
 		return Plugin_Continue; //wait until the next call so we dont waste CPU cycles, after all this is a background task
 	}
 	
 	decl String:steamId[64]; //defused the bomb
-	GetClientAuthId(cacheCurrentClient%maxclients, AuthId_Steam3, steamId, sizeof(steamId));
+	GetClientAuthId(1+cacheCurrentClient%maxclients, AuthId_Steam3, steamId, sizeof(steamId));
 	ReplaceString(steamId, sizeof(steamId), "[U:1:", "", false);
 	ReplaceString(steamId, sizeof(steamId), "[U:0:", "", false);
 	ReplaceString(steamId, sizeof(steamId), "]", "", false);
@@ -238,7 +239,7 @@ public Action:Timer_Cache(Handle:timer)
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	dbLocked = 1; //Lock our own DB
-	SQL_TQuery(dbt, queryCallback, query, cacheCurrentClient%maxclients);
+	SQL_TQuery(dbt, queryCallback, query, 1+cacheCurrentClient%maxclients);
 
 	cacheCurrentClient++;
 	return Plugin_Continue;
