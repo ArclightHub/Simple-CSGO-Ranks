@@ -176,6 +176,17 @@ public int getSteamIdNumber(int client)
 	return StringToInt(steamId);
 }
 
+public OnClientPostAdminCheck(client){
+	cacheCurrentClient = client; //attempt to cache a player immediately after they join
+	CreateTimer(0.1, Timer_Cache);
+	return;
+}
+
+public OnClientDisconnect(client){
+	rankCacheValidate[cacheCurrentClient] = 0;
+	return;
+}
+
 //Threaded code
 public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
