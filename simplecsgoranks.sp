@@ -17,6 +17,7 @@ int shotPlayers = -1;
 int defuser = -1; //guy who defused the bomb type is CLIENT!!
 int shotCountdown = 0;
 Handle dbc;
+Handle dbt; //handle for threaded query
 char errorc[255];
 float copyTime;
 
@@ -226,13 +227,13 @@ public Action:Timer_Cache(Handle:timer)
 	StrCat(steamId, sizeof(steamId), " LIMIT 1"); //limit optimisation
 	StrCat(query, sizeof(query), steamId); //done
 
-	if(dbc == INVALID_HANDLE){ 
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
+	if(dbt == INVALID_HANDLE){ 
+		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+		SQL_GetError(dbt, errorc, sizeof(errorc));
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	dbLocked = 1; //Lock our own DB
-	SQL_TQuery(dbc, queryCallback, asyncQuery, cacheCurrentClient);
+	SQL_TQuery(dbt, queryCallback, asyncQuery, cacheCurrentClient);
 
 	cacheCurrentClient++;
 	return Plugin_Continue;
@@ -664,6 +665,7 @@ public int GetCleaningConvar()
 	return StringToInt(buffer);
 }
 
+
 //called at start of plugin, sets everything up.
 public OnPluginStart()
 {
@@ -711,6 +713,8 @@ public OnPluginStart()
 		//dbc = SQL_DefConnect(errorc, sizeof(errorc)); //open the connection that will be used for the rest of the time
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		databaseCheck = databaseName; //update it
+
+		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		if(threadedWorker == 1) CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
 	}
 	else{
