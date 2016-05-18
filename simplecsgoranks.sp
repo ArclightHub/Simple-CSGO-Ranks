@@ -27,6 +27,7 @@ int cacheCurrentClient = 1;
 char asyncQuery[440];
 
 //Global Variables, you can touch.
+int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
 int ranksText[320];
 new String:databaseName[128] = "default";
 new String:databaseNew[128] = "default";
@@ -103,8 +104,8 @@ public void setRank(int steamId, int rank, int client) //done
 //adds the given number of points to the given user
 public void addRank(int steamId, int points, int client)
 {
-	//setRank(steamId, (getRank(steamId) + points));
-	setRank(steamId, (getRankCached(steamId, 0, 0, 0) + points), client);
+	if(threadedCache == 0) setRank(steamId, (getRank(steamId) + points), client);
+	else setRank(steamId, (getRankCached(steamId, 0, 0, 0) + points), client);
 }
 
 public void purgeOldUsers() 
@@ -585,8 +586,8 @@ public void copyOut()
 				//print out info
 				GetClientName(client, name1, sizeof(name1)); //shooter
 				GetClientName(client2, name2, sizeof(name2)); //got shot
-				//CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRank(StringToInt(steamId1)), name2, getRank(StringToInt(steamId2)) );
-				CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+				if(threadedCache == 0) CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRank(StringToInt(steamId1)), name2, getRank(StringToInt(steamId2)) );
+				else CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
 				updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
 				updateName(StringToInt(steamId2), name2);
 
@@ -609,8 +610,8 @@ public void copyOut()
 					//add +2 for assist
 					addRank(StringToInt(steamId4), 2, client3);
 					
-					//CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4, getRank(StringToInt(steamId4)) );
-					CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
+					if(threadedCache == 0) CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4, getRank(StringToInt(steamId4)) );
+					else CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
 				}
 			}
 			shotCountdown++;
@@ -846,8 +847,8 @@ public updateRanksText(){
 			ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
 			ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
 			ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
-			//ranksText[i] = getRank(StringToInt(steamId1));
-			ranksText[i] = getRankCached(StringToInt(steamId1), 1, i, 0);
+			if(threadedCache == 0) ranksText[i] = getRank(StringToInt(steamId1));
+			else ranksText[i] = getRankCached(StringToInt(steamId1), 1, i, 0);
 			getRank2(StringToInt(steamId1), i);
 		}
 	}
