@@ -28,6 +28,7 @@ char asyncQuery[440];
 
 //Global Variables, you can touch.
 int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
+int threadedWorker = 1; //Automatically load rank data in the background in another thread to improve speeds
 int ranksText[320];
 new String:databaseName[128] = "default";
 new String:databaseNew[128] = "default";
@@ -89,7 +90,7 @@ public void setRank(int steamId, int rank, int client) //done
 	{
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
-		PrintToServer("Failed to query (error: %s)", errorc);
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	} 
 	else {
 		if (!SQL_FastQuery(dbc, query))
@@ -228,7 +229,7 @@ public Action:Timer_Cache(Handle:timer)
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
-		PrintToServer("Failed to query (error: %s)", errorc);
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	dbLocked = 1; //Lock our own DB
 	SQL_TQuery(dbc, queryCallback, asyncQuery, cacheCurrentClient);
@@ -272,7 +273,7 @@ public int getRank(int steamId)
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
-		PrintToServer("Failed to query (error: %s)", errorc);
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	//return the users rank
 	int rank;
@@ -310,7 +311,7 @@ public getRank2(int steamId, int i)
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
-		PrintToServer("Failed to query (error: %s)", errorc);
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	newUser(steamId);
 	new String:ssteamId[65];
@@ -380,7 +381,7 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 	{
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
-		PrintToServer("Failed to query (error: %s)", errorc);
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	} else {
 		if (!SQL_FastQuery(dbc, query))
 		{
@@ -396,7 +397,7 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 	{
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
-		PrintToServer("Failed to query (error: %s)", errorc);
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	} else {
 		if (!SQL_FastQuery(dbc, query2))
 		{
@@ -456,18 +457,18 @@ public void newDB()
 	new Handle:db = SQL_Connect(databaseName, false, error2, sizeof(error2));
 
 	//CREATE DATABASE IF NOT EXISTS steam
-	PrintToServer("Adding database tables");
+	if(printToServer == 1) PrintToServer("Adding database tables");
 	if (!SQL_FastQuery(db, "CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1"))
 	{
 		new String:error[255]
 		SQL_GetError(db, error, sizeof(error))
-		PrintToServer("Failed to query (error: %s)", error) //always print now to easily allow users to determine early issues
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error) //always print now to easily allow users to determine early issues
 	}
 	if (!SQL_FastQuery(db, "CREATE TABLE `steamname` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `name` char(255) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;"))
 	{
 		new String:error3[255]
 		SQL_GetError(db, error3, sizeof(error3))
-		PrintToServer("Failed to query (error: %s)", error3)
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error3)
 	}
 	CloseHandle(db)
 	return;
@@ -505,7 +506,7 @@ public void updateName(int steamId, char name[64])
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
-		PrintToServer("Failed to query (error: %s)", errorc);
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	if (!SQL_FastQuery(dbc, query))
 	{
@@ -522,7 +523,7 @@ public void copyOut()
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
-		PrintToServer("Failed to query (error: %s)", errorc);
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	else {	
 		decl String:steamId1[64]; //shooter
@@ -556,7 +557,7 @@ public void copyOut()
 		}
 		//new
 		shotCountdown = 0
-		PrintToServer("%d players were killed this round.", shotPlayers+1);
+		if(printToServer == 1) PrintToServer("%d players were killed this round.", shotPlayers+1);
 		while(shotCountdown <= shotPlayers )//while(shotPlayers > -1) //only happens if kills occur during a round, else it skips
 		{
 			client = shooter[shotCountdown];
@@ -688,7 +689,6 @@ public OnPluginStart()
 	if(GetKillPointsConvar()) killPoints = GetKillPointsConvar();
 
 	if(GetCleaningConvar()) dbCleaning = GetCleaningConvar();
-	GetDebugConvar();
 	GetDatabaseConvar();
 	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
 	if(GetDebugConvar() == 1) printToServer = 1;
@@ -711,7 +711,7 @@ public OnPluginStart()
 		//dbc = SQL_DefConnect(errorc, sizeof(errorc)); //open the connection that will be used for the rest of the time
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		databaseCheck = databaseName; //update it
-		CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //begin caching data
+		if(threadedWorker == 1) CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
 	}
 	else{
 		PrintToServer("Database Failure. Please make sure your MySQL database is correctly set up. If you believe it is please check the databases.cfg file, check the permissions and check the port."); //inform the user that its broken
@@ -730,7 +730,7 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 {
 	GetDatabaseConvar();
 	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
-	PrintToServer("Database: \"%s\"  Got:\"%s\"", databaseName, databaseNew);
+	if(printToServer == 1) PrintToServer("Database: \"%s\"  Got:\"%s\"", databaseName, databaseNew);
 	if(strcmp(databaseCheck, databaseName, false) == 0) {
 		//connect to the new convar.
 		databaseCheck = databaseName;
@@ -801,11 +801,11 @@ public void getTop()
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
-		PrintToServer("Failed to query (error: %s)", errorc);
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 
 	new String:query[256];
-	query = "select concat(\"{darkred}\", stn.name,\"{darkblue} - {green}\",a.rank) from (select * from steam order by cast(rank as decimal) desc limit 50) a join steamname stn on stn.steamId = a.steamId limit 50";
+	query = "select concat(\"{darkred}\", stn.name,\"{darkblue} - {green}\",a.rank) from (select * from steam order by cast(rank as decimal) desc limit 25) a join steamname stn on stn.steamId = a.steamId limit 25";
 
 	if(printToServer == 1) PrintToServer("query: %s", query);
 
@@ -820,7 +820,7 @@ public void getTop()
 		new String:topTemp[128];
 		int z = 0;
 		//char sizeOfChar[1] = "a";
-		while (SQL_FetchRow(query2) && z < 50)
+		while (SQL_FetchRow(query2) && z < 25)
 		{
 			SQL_FetchString(query2, 0, topTemp, sizeof(topTemp));
 			if(printToServer == 1) PrintToServer("Getting top player:%s", topTemp);
