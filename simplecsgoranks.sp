@@ -191,7 +191,12 @@ public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:clie
 public Action:Timer_Cache(Handle:timer)
 {
 	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
-
+	if(!IsClientInGame(cacheCurrentClient)) {
+		//if the spot is empty
+		rankCacheValidate[cacheCurrentClient] = 0; //invalidate the spot
+		cacheCurrentClient++; //move on to the next spot
+		return Plugin_Continue; //wait until the next call so we dont waste CPU cycles, after all this is a background task
+	}
 	new maxclients = GetMaxClients();
 
 	decl String:steamId[64]; //defused the bomb
@@ -322,7 +327,7 @@ public getRank2(int steamId, int i)
 
 
 //user one kills user two
-public void userShot(int steamId1, int steamId2) //done
+public void userShot(int steamId1, int steamId2, int client, int client2) //done
 {
 
 	decl String:stime[65];
@@ -335,6 +340,8 @@ public void userShot(int steamId1, int steamId2) //done
 	IntToString(steamId1,ssteamId1,sizeof(ssteamId1));
 	IntToString(steamId2,ssteamId2,sizeof(ssteamId2));
 		
+	rankCacheValidate[client] = 0;
+	rankCacheValidate[client2] = 0;
 
 	Format(query, sizeof(query), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank+%d+%d ELSE rank+%d END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId1, stime, ssteamId1);
 	Format(query2, sizeof(query2), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank-%d-%d ELSE rank-%d-1 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId2, stime, ssteamId2);
@@ -546,7 +553,7 @@ public void copyOut()
 				ReplaceString(steamId2, sizeof(steamId2), "]", "", false);
 				if(printToServer == 1) PrintToServer("Killer:SteamId1:%s  Killed:SteamId2:%s", steamId1, steamId2);
 
-				userShot(StringToInt(steamId1),StringToInt(steamId2)); //adds to first, takes from second
+				userShot(StringToInt(steamId1),StringToInt(steamId2), client, client2); //adds to first, takes from second
 
 				//print out info
 				GetClientName(client, name1, sizeof(name1)); //shooter
