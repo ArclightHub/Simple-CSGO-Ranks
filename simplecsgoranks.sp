@@ -359,12 +359,12 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 	
 	if(rankCacheValidate[client] == 1 && rankCacheValidate[client2] == 1){
 		if(rankCache[client]+higherRankThreshold < rankCache[client2]){
-			rankCache[client] += 5+higherRankFactor; 
-			rankCache[client2] -= 6+higherRankFactor;
+			rankCache[client] += killPoints+higherRankFactor; 
+			rankCache[client2] -= killPoints+1+higherRankFactor;
 		}
 		else{
-			rankCache[client] += 5; 
-			rankCache[client2] -= 6;
+			rankCache[client] += killPoints; 
+			rankCache[client2] -= killPoints+1;
 		}
 	}
 	else{
