@@ -45,6 +45,7 @@ int higherRankThreshold = 200; //how many points above a user should me consider
 int higherRankFactor = 5; //if the shot user is much higher than the user who shot them the higher ranked user should lose more rank.
 int killPoints = 5;
 int startRank = 100; //new users start with this rank.
+int dbCleaning = 2;
 
 //begin
 public Plugin:myinfo =
@@ -98,20 +99,22 @@ public void addRank(int steamId, int points)
 
 public void purgeOldUsers() 
 {
-	if( GetCleaningConvar() == 0 ) return;
-	//purges the database of all old users
+	if( dbCleaning == 0 ) return;
 
-	if (!SQL_FastQuery(dbc, "DELETE FROM steam WHERE age < ((SELECT UNIX_TIMESTAMP()) - (3600*24*60))"))
-	{
-		new String:error[255]
-		SQL_GetError(dbc, error, sizeof(error))
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
-	}
 	if (!SQL_FastQuery(dbc, "DELETE FROM steam WHERE rank = 100"))
 	{
 		new String:error5[255]
 		SQL_GetError(dbc, error5, sizeof(error5))
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error5)
+	}
+	if( dbCleaning == 1 ) return;
+
+	//purges the database of all old users
+	if (!SQL_FastQuery(dbc, "DELETE FROM steam WHERE age < ((SELECT UNIX_TIMESTAMP()) - (3600*24*60))"))
+	{
+		new String:error[255]
+		SQL_GetError(dbc, error, sizeof(error))
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
 	}
 	if (!SQL_FastQuery(dbc, "DELETE FROM steamname WHERE steamId NOT IN(SELECT steamId FROM steam)"))
 	{
@@ -125,7 +128,6 @@ public void purgeOldUsers()
 		SQL_GetError(dbc, error4, sizeof(error4))
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error4)
 	}
-	//CloseHandle(db)
 	return;
 }
 
@@ -186,8 +188,6 @@ public int getRank(int steamId)
 			if(printToServer == 1) PrintToServer("Getting rank of %s : %s", steamId, name)
 			rank = StringToInt(name);
 		}
-	
-		
 	}
 	CloseHandle(query2);
 	return rank; 
@@ -237,8 +237,8 @@ public void userShot(int steamId1, int steamId2) //done
 	decl String:stime[65];
 	decl String:ssteamId1[65];
 	decl String:ssteamId2[65];
-	decl String:query[430];
-	decl String:query2[430];
+	decl String:query[440];
+	decl String:query2[440];
 
 	IntToString(GetTime(),stime,sizeof(stime));
 	IntToString(steamId1,ssteamId1,sizeof(ssteamId1));
@@ -544,7 +544,7 @@ public OnPluginStart()
 	sm_simplecsgoranks_higher_rank_gap = CreateConVar("sm_simplecsgoranks_higher_rank_gap", "500", "Difference between players ranks needed to consider one to be a higher ranked player.")
 
 	sm_simplecsgoranks_database = CreateConVar("sm_simplecsgoranks_database", "default", "Allows changing of the database used from databases.cfg")
-	sm_simplecsgoranks_cleaning = CreateConVar("sm_simplecsgoranks_cleaning", "1", "Cleans the database of players who have no kills for more than two months.")
+	sm_simplecsgoranks_cleaning = CreateConVar("sm_simplecsgoranks_cleaning", "2", "(0)Nothing. (1) Cleans the database. (2) Clears players who have no kills for more than two months.")
 	sm_simplecsgoranks_debug = CreateConVar("sm_simplecsgoranks_debug", "0", "Enable or disable advanced error messages. (0 or 1)")
 
 	int flags = sm_simplecsgoranks_database.Flags;
@@ -560,6 +560,7 @@ public OnPluginStart()
 	if(GetHigherRankAdditionalConvar()) higherRankFactor = GetHigherRankAdditionalConvar();
 	if(GetKillPointsConvar()) killPoints = GetKillPointsConvar();
 
+	if(GetCleaningConvar()) dbCleaning = GetCleaningConvar();
 	GetDebugConvar();
 	GetDatabaseConvar();
 	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
@@ -659,7 +660,6 @@ public OnMapStart ()
 	defuser = -1;
 	updateRanksText();
 	getTop();
-	if(ready) purgeOldUsers();
 }
 
 public void getTop()
