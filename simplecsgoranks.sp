@@ -220,7 +220,7 @@ public Action:Timer_Cache(Handle:timer)
 	{
 		cacheCurrentClient++;
 	}
-	PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
+	if(printToServer == 1) PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) {
 		//if the spot is empty
 		rankCacheValidate[1+cacheCurrentClient%maxclients] = 0; //invalidate the empty spot
@@ -269,13 +269,14 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 			}
 		}
 	}
-	PrintToServer("Current Client %d", currentClient);
+	if(printToServer == 1) PrintToServer("Current Client %d", currentClient);
 	if(currentClient == -1) return getRank(steamId); //failed to look up client
 	else if(rankCacheValidate[currentClient] == 0){
 		return getRank(steamId);
 	}
 	else{
 		if(invalidateCache == 1) rankCacheValidate[currentClient] = 0; //invalidate the cached copy, this flag is used when the query changes the rank
+		if(printToServer == 1) PrintToServer("Returning cached rank %d", rankCache[currentClient]);
 		return rankCache[currentClient]; //return the cached copy
 	}
 }
