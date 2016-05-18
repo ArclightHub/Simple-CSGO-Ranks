@@ -169,6 +169,7 @@ public void newUser(int steamId) //done
 
 public int getSteamIdNumber(int client)
 {
+	if(!IsClientConnected(client)) return -1;
 	decl String:steamId[64]; //defused the bomb
 	GetClientAuthId(client, AuthId_Steam3, steamId, sizeof(steamId));
 	ReplaceString(steamId, sizeof(steamId), "[U:1:", "", false);
