@@ -9,7 +9,7 @@
 #include <multicolors>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.1Dev"
+#define PLUGIN_VERSION "0.2.1"
 
 //Global Variables, do NOT touch.
 bool ready = false;
