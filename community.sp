@@ -47,7 +47,8 @@ public int getSteamIdNumber(int client)
 }
 
 public OnClientPostAdminCheck(client){
-	CreateTimer(0.1, Timer_Community, client);
+
+	if(!IsFakeClient(client)) CreateTimer(0.1, Timer_Community, client);
 	return;
 }
 
@@ -59,8 +60,11 @@ public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:clie
 
 public Action:Timer_Community(Handle:timer, any client)
 {
-	if(dbLocked == 1) return Plugin_Continue;
+	if( dbLocked == 1 || !IsClientConnected(client) || !IsClientAuthorized(client) || IsFakeClient(client) ) return Plugin_Continue;
 
+	decl String:steamId[64];
+	IntToString(getSteamIdNumber(client),steamId,sizeof(steamId));
+	
 	decl String:steamId2[64];
 	GetClientAuthId(client, AuthId_Steam2, steamId2, sizeof(steamId2));
 
@@ -74,7 +78,9 @@ public Action:Timer_Community(Handle:timer, any client)
 	IntToString(GetTime(),stime,sizeof(stime));
 
 	new String:query[256];
-	Format(query, sizeof(query), "REPLACE INTO steamcommunity (steamId, Steam2, Steam3, SteamID64, age) VALUES(%s,%s,%s,%s,%s)", getSteamIdNumber(client), steamId2, steamId3, communityId, stime);
+	Format(query, sizeof(query), "REPLACE INTO steamcommunity (steamId, Steam2, Steam3, SteamID64, age) VALUES(\"%s\",\"%s\",\"%s\",\"%s\",\"%s\")", steamId, steamId2, steamId3, communityId, stime);
+	
+	//PrintToServer("Adding %s", query);
 
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
