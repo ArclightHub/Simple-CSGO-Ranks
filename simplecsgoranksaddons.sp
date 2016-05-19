@@ -214,7 +214,7 @@ public Action:Timer_executeQueries(Handle:timer)
 			SQL_TQuery(dbc, queryCallback, aquery, 1);
 		}
 		else if(killsIndex > 0) { 
-		    PrintToServer("Adding kills");
+			PrintToServer("Adding kills");
 			queryType = 2; 
 			currentOperate = killsIndex; 
 			//kills[255][3]; //killer, victim, headshot
