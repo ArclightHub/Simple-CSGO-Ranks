@@ -49,7 +49,7 @@ There are six console variables:
 
 You may also want an updated version of the includes: "[INC] Multi Colors" from https://forums.alliedmods.net/showthread.php?t=247770
 The ranking data is able to be displayed on the server MOTD.
-Currently this addon is running on the "Gaming Zone Retake : 5v5 Ranked" server.
+Currently this addon is running on our servers.
 If you wish to try the addon before you download it please feel free to join the server.
 IP: gamingzoneservers.com
 
