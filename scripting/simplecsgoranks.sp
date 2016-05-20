@@ -29,6 +29,7 @@ int cacheCurrentClient = 1;
 //Global Variables, you can touch.
 int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
 int threadedWorker = 1; //Automatically load rank data in the background in another thread to improve speeds
+int immediateMode = 1; //Use immediate Worker instead of slow round method. Good for Deathmatch
 int ranksText[320];
 new String:databaseName[128] = "default";
 new String:databaseNew[128] = "default";
@@ -157,11 +158,23 @@ public void newUser(int steamId) //done
 
 	if(printToServer == 1) PrintToServer("query: %s", query);
 	
-	if (!SQL_FastQuery(dbc, query))
+	if(dbc == INVALID_HANDLE){ 
+		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+		SQL_GetError(dbc, errorc, sizeof(errorc));
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+	}
+	
+	if( immediateMode == 0 )
 	{
-		new String:error[255]
-		SQL_GetError(dbc, error, sizeof(error))
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
+		if (!SQL_FastQuery(dbc, query))
+		{
+			new String:error[255]
+			SQL_GetError(dbc, error, sizeof(error))
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
+		}
+	}
+	else{
+		SQL_TQuery(dbc, updateThread, query, 0);
 	}
 
 	return;
@@ -192,6 +205,16 @@ public OnClientDisconnect(client){
 }
 
 //Threaded code
+
+public updateThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
+{
+	if(HQuery == INVALID_HANDLE){
+		PrintToServer("Query failed! %s", error);
+	}
+
+	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
+}
+
 public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
@@ -221,6 +244,11 @@ public Action:Timer_Cache(Handle:timer)
 		skipped++;
 		cacheCurrentClient++;
 	}
+	
+	if( 1+cacheCurrentClient%maxclients  > maxclients) return Plugin_Continue;
+	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
+	if(IsFakeClient(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
+		
 	if(printToServer == 1) PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) {
 		//if the spot is empty
@@ -392,37 +420,59 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 	Format(query2, sizeof(query2), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank-%d-%d ELSE rank-%d-1 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId2, stime, ssteamId2);
 
 	if(printToServer == 1) PrintToServer("query: %s", query);	
-	
-	if (dbc == INVALID_HANDLE)
+	if( immediateMode == 0 )
 	{
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-	} else {
-		if (!SQL_FastQuery(dbc, query))
+		if (dbc == INVALID_HANDLE)
 		{
-			new String:error2[255]
-			SQL_GetError(dbc, error2, sizeof(error2))
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error2)
-		}
-	}	
-	
-	if(printToServer == 1) PrintToServer("query: %s", query2);	
-	
-	if (dbc == INVALID_HANDLE)
-	{
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-	} else {
-		if (!SQL_FastQuery(dbc, query2))
+			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbc, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		} else {
+			if (!SQL_FastQuery(dbc, query))
+			{
+				new String:error2[255]
+				SQL_GetError(dbc, error2, sizeof(error2))
+				if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error2)
+			}
+		}	
+		
+		if(printToServer == 1) PrintToServer("query: %s", query2);	
+		
+		if (dbc == INVALID_HANDLE)
 		{
-			new String:error3[255]
-			SQL_GetError(dbc, error3, sizeof(error3))
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error3)
+			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbc, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		} else {
+			if (!SQL_FastQuery(dbc, query2))
+			{
+				new String:error3[255]
+				SQL_GetError(dbc, error3, sizeof(error3))
+				if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error3)
+			}
 		}
 	}
-	
+	else
+	{
+		//Threaded and immediate
+		decl String:name1[64]; //shooter
+		decl String:name2[64]; //got shot
+		GetClientName(client, name1, sizeof(name1)); //shooter
+		GetClientName(client2, name2, sizeof(name2)); //got shot
+		CPrintToChatAll("{darkred}%s (%d) {green}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
+		
+		if (dbc == INVALID_HANDLE)
+		{
+			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbc, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		}
+		newUser(steamId1);
+		newUser(steamId2);
+		SQL_TQuery(dbc, updateThread, query, 0);
+		SQL_TQuery(dbc, updateThread, query2, 0);
+		
+	}
 }
 
 public bool dbWorks()
@@ -747,6 +797,7 @@ public Action:Event_BombDefused(Handle:event, const String:name[], bool:dontBroa
 
 public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
+	
 	GetDatabaseConvar();
 	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
 	if(printToServer == 1) PrintToServer("Database: \"%s\"  Got:\"%s\"", databaseName, databaseNew);
@@ -758,6 +809,8 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 	}
 	if(GetDebugConvar() == 1) printToServer = 1;
 	else if(GetDebugConvar() == 0) printToServer = 0;
+	
+	if( immediateMode == 1 ) return Plugin_Continue;
 	
 	copyTime = GetEngineTime();
 	while(shotPlayers > -1 || defuser != -1){
@@ -791,6 +844,13 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 	if(!ready || IsFakeClient(attacker) || IsFakeClient(userId)) return Plugin_Continue;
 	if(userId == 0 ||  attacker == 0) return Plugin_Continue; //fix
 	if(shotPlayers < 0) shotPlayers = 0; //out of range check //This happens on the first kill of each round. If no kills occur in a round this prevents it from crashing. its essential
+	
+	if( immediateMode == 1 ) {
+		
+		userShot(getSteamIdNumber(attacker),getSteamIdNumber(userId), attacker, userId);
+		return Plugin_Continue;
+	}
+	
 	if(shotPlayers > 254) {
 	dbLocked = 1;
 	copyOut(); //if the buffer fills because you use a dumb addon that allows more than 32 players per team dont let it crash
