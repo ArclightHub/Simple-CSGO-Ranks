@@ -29,7 +29,7 @@ int cacheCurrentClient = 1;
 //Global Variables, you can touch.
 int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
 int threadedWorker = 1; //Automatically load rank data in the background in another thread to improve speeds
-int immediateMode = 1; //Use immediate thread instead of slow round method. Good for Deathmatch
+int immediateMode = 0; //Use immediate thread instead of slow round method. Good for Deathmatch
 int ranksText[320];
 new String:databaseName[128] = "default";
 new String:databaseNew[128] = "default";
@@ -841,7 +841,17 @@ public int GetCleaningConvar()
 	return StringToInt(buffer);
 }
 
+public OnConfigsExecuted()
+{
+	if(GetModeConvar()) immediateMode = GetModeConvar();
+	
+	if(GetHigherRankGapConvar()) higherRankThreshold = GetHigherRankGapConvar();
+	if(GetHigherRankAdditionalConvar()) higherRankFactor = GetHigherRankAdditionalConvar();
+	if(GetKillPointsConvar()) killPoints = GetKillPointsConvar();
 
+	if(GetCleaningConvar()) dbCleaning = GetCleaningConvar();
+	GetDatabaseConvar();
+}
 //called at start of plugin, sets everything up.
 public OnPluginStart()
 {
@@ -877,14 +887,8 @@ public OnPluginStart()
 	PrintToServer("%s",server);
 	AutoExecConfig(true, server, "sourcemod");
 	
-	if(GetModeConvar()) immediateMode = GetModeConvar();
-	
-	if(GetHigherRankGapConvar()) higherRankThreshold = GetHigherRankGapConvar();
-	if(GetHigherRankAdditionalConvar()) higherRankFactor = GetHigherRankAdditionalConvar();
-	if(GetKillPointsConvar()) killPoints = GetKillPointsConvar();
 
-	if(GetCleaningConvar()) dbCleaning = GetCleaningConvar();
-	GetDatabaseConvar();
+	
 	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
 	if(GetDebugConvar() == 1) printToServer = 1;
 	else if(GetDebugConvar() == 0) printToServer = 0;
