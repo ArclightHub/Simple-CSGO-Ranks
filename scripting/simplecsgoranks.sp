@@ -29,7 +29,7 @@ int cacheCurrentClient = 1;
 //Global Variables, you can touch.
 int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
 int threadedWorker = 1; //Automatically load rank data in the background in another thread to improve speeds
-int immediateMode = 1; //Use immediate Worker instead of slow round method. Good for Deathmatch
+int immediateMode = 1; //Use immediate thread instead of slow round method. Good for Deathmatch
 int ranksText[320];
 new String:databaseName[128] = "default";
 new String:databaseNew[128] = "default";
@@ -251,6 +251,16 @@ public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:clie
 			rankCache[client] = StringToInt(data);
 			rankCacheValidate[client] = 1;  //Validate once the data is copied
 		}
+	}
+
+	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
+	dbLocked = 0; //unlock db after everything is done
+}
+
+public noCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
+{
+	if(HQuery == INVALID_HANDLE){
+		PrintToServer("Query failed! %s", error);
 	}
 
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
@@ -518,6 +528,8 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 		if(rankCacheValidate[client2] == 0) newUser(steamId2);
 		SQL_TQuery(dbc, updateThread, query, 0);
 		SQL_TQuery(dbc, updateThread, query2, 0);
+		updateName(steamId1, name1); //make sure the users name is in the DB
+		updateName(steamId2, name2);
 		
 	}
 }
@@ -621,11 +633,18 @@ public void updateName(int steamId, char name[64])
 		SQL_GetError(dbc, errorc, sizeof(errorc));
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
-	if (!SQL_FastQuery(dbc, query))
+	
+	if(threadedWorker == 0)
 	{
-		new String:error[255]
-		SQL_GetError(dbc, error, sizeof(error))
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
+		if (!SQL_FastQuery(dbc, query))
+		{
+			new String:error[255]
+			SQL_GetError(dbc, error, sizeof(error))
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
+		}
+	}
+	else{
+		SQL_TQuery(dbc, noCallback, query, 0);
 	}
 }
 
