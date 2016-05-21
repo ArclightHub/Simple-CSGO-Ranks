@@ -210,6 +210,36 @@ public OnClientDisconnect(client){
 
 //Threaded code
 
+public topThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
+{
+	if(HQuery == INVALID_HANDLE){
+		PrintToServer("Query failed! %s", error);
+	}
+	else{
+		new String:topTemp[128];
+		int z = 0;
+		while (SQL_FetchRow(HQuery) && z < 25)
+		{
+			SQL_FetchString(HQuery, 0, topTemp, sizeof(topTemp));
+			if(printToServer == 1) PrintToServer("Getting top player:%s", topTemp);
+			//Format(topRanks[z][], sizeof(sizeOfChar)*128, "%s", topTemp);
+			strcopy(topRanks[z], 128, topTemp);
+			z++;
+		}
+			
+		if(SQL_FetchRow(HQuery))
+		{
+			new String:data[65];
+			SQL_FetchString(HQuery, 0, data, sizeof(data))
+			decl String:name[64];
+			GetClientName(client, name, sizeof(name));
+			ranksText2[client] = data;
+		}
+	}
+
+	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
+}
+
 public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
@@ -265,6 +295,13 @@ public noCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
 
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 	dbLocked = 0; //unlock db after everything is done
+}
+
+
+
+public Action:Timer_Top(Handle:timer)
+{
+	getTop();
 }
 
 public Action:Timer_Ranks(Handle:timer)
@@ -848,7 +885,9 @@ public OnPluginStart()
 		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		if(threadedWorker == 1){
 			CreateTimer(2.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
+			CreateTimer(120.0, Timer_Top, _, TIMER_REPEAT);
 			if(immediateMode == 1) CreateTimer(15.0, Timer_Ranks, _, TIMER_REPEAT); //begin caching worker
+			
 		}
 	}
 	else{
@@ -957,29 +996,35 @@ public void getTop()
 
 	if(printToServer == 1) PrintToServer("query: %s", query);
 
-	new Handle:query2 = SQL_Query(dbc, query);
-	if (query2 == INVALID_HANDLE)
+	if( immediateMode == 1 )
 	{
-		new String:error[255]
-		SQL_GetError(dbc, error, sizeof(error))
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
-	} else {
-
-		new String:topTemp[128];
-		int z = 0;
-		//char sizeOfChar[1] = "a";
-		while (SQL_FetchRow(query2) && z < 25)
-		{
-			SQL_FetchString(query2, 0, topTemp, sizeof(topTemp));
-			if(printToServer == 1) PrintToServer("Getting top player:%s", topTemp);
-			//Format(topRanks[z][], sizeof(sizeOfChar)*128, "%s", topTemp);
-			strcopy(topRanks[z], 128, topTemp);
-			z++;
-		}
-	
-		
+		SQL_TQuery(dbc, topThread, query, 0);
 	}
-	CloseHandle(query2);
+	else {
+		new Handle:query2 = SQL_Query(dbc, query);
+		if (query2 == INVALID_HANDLE)
+		{
+			new String:error[255]
+			SQL_GetError(dbc, error, sizeof(error))
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
+		} else {
+
+			new String:topTemp[128];
+			int z = 0;
+			//char sizeOfChar[1] = "a";
+			while (SQL_FetchRow(query2) && z < 25)
+			{
+				SQL_FetchString(query2, 0, topTemp, sizeof(topTemp));
+				if(printToServer == 1) PrintToServer("Getting top player:%s", topTemp);
+				//Format(topRanks[z][], sizeof(sizeOfChar)*128, "%s", topTemp);
+				strcopy(topRanks[z], 128, topTemp);
+				z++;
+			}
+		
+			
+		}
+		CloseHandle(query2);
+	}
 }
 
 //only allow when alive so that the variable has the correct information && IsPlayerAlive(i)
