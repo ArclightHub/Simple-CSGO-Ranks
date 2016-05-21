@@ -41,6 +41,8 @@ int assister[255];//array of clients
 int shot[255];
 
 //convars
+ConVar sm_simplecsgoranks_mode;
+
 ConVar sm_simplecsgoranks_kill_points;
 ConVar sm_simplecsgoranks_higher_rank_additional;
 ConVar sm_simplecsgoranks_higher_rank_gap;
@@ -793,6 +795,12 @@ public void copyOut()
 }
 
 //steam stuff
+public int GetModeConvar()
+{
+	char buffer[128]
+	sm_simplecsgoranks_mode.GetString(buffer, 128)
+	return (StringToInt(buffer) ? StringToInt(buffer) : 0 );
+}
 public int GetKillPointsConvar()
 {
 	char buffer[128]
@@ -837,6 +845,7 @@ public int GetCleaningConvar()
 //called at start of plugin, sets everything up.
 public OnPluginStart()
 {
+	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "1", "Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
 	sm_simplecsgoranks_kill_points = CreateConVar("sm_simplecsgoranks_kill_points", "5", "The number of points gained per kill")
 	sm_simplecsgoranks_higher_rank_additional = CreateConVar("sm_simplecsgoranks_higher_rank_additional", "5", "Additional points gained when killing a higher ranked player.")
 	sm_simplecsgoranks_higher_rank_gap = CreateConVar("sm_simplecsgoranks_higher_rank_gap", "500", "Difference between players ranks needed to consider one to be a higher ranked player.")
@@ -853,6 +862,12 @@ public OnPluginStart()
 	sm_simplecsgoranks_kill_points.Flags = flags;
 	sm_simplecsgoranks_higher_rank_additional.Flags = flags;
 	sm_simplecsgoranks_higher_rank_gap.Flags = flags;
+	sm_simplecsgoranks_mode.Flags = flags;
+	
+
+	AutoExecConfig(true, "simplecsgoranks", "sourcemod");
+	
+	if(GetModeConvar()) immediateMode = GetModeConvar();
 	
 	if(GetHigherRankGapConvar()) higherRankThreshold = GetHigherRankGapConvar();
 	if(GetHigherRankAdditionalConvar()) higherRankFactor = GetHigherRankAdditionalConvar();
@@ -886,7 +901,7 @@ public OnPluginStart()
 		if(threadedWorker == 1){
 			CreateTimer(2.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
 			CreateTimer(120.0, Timer_Top, _, TIMER_REPEAT);
-			if(immediateMode == 1) CreateTimer(15.0, Timer_Ranks, _, TIMER_REPEAT); //begin caching worker
+			if(immediateMode == 1) CreateTimer(15.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 			
 		}
 	}
