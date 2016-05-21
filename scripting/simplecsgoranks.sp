@@ -22,7 +22,7 @@ char errorc[255];
 float copyTime;
 
 int dbLocked = 0;
-int rankCache[65]; //Caches ranks for threaded operation (Soon TM)
+int rankCache[65]; //Caches ranks for threaded operation
 int rankCacheValidate[65]; //Validation
 int cacheCurrentClient = 1;
 
@@ -213,7 +213,7 @@ public OnClientDisconnect(client){
 public topThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
-		PrintToServer("Query failed! %s", error);
+		PrintToServer("Top Thread Query failed! %s", error);
 	}
 	else{
 		new String:topTemp[128];
@@ -243,7 +243,7 @@ public topThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
-		PrintToServer("Query failed! %s", error);
+		PrintToServer("Position Thread Query failed! %s", error);
 	}
 	else{
 		if(SQL_FetchRow(HQuery))
@@ -262,16 +262,16 @@ public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:cli
 public updateThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
-		PrintToServer("Query failed! %s", error);
+		PrintToServer("Update Thread Query failed! %s", error);
 	}
 
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
-public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
+public cacheThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
-		PrintToServer("Query failed! %s", error);
+		PrintToServer("Cache Thread Query failed! %s", error);
 	}
 	else{
 		new String:data[65]
@@ -290,7 +290,7 @@ public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:clie
 public noCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
-		PrintToServer("Query failed! %s", error);
+		PrintToServer("noCallback Query failed! %s", error);
 	}
 
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
@@ -349,7 +349,7 @@ public Action:Timer_Cache(Handle:timer)
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	dbLocked = 1; //Lock our own DB
-	SQL_TQuery(dbt, queryCallback, query, 1+cacheCurrentClient%maxclients);
+	SQL_TQuery(dbt, cacheThread, query, 1+cacheCurrentClient%maxclients);
 
 	cacheCurrentClient++;
 	return Plugin_Continue;
@@ -1008,15 +1008,12 @@ public void getTop()
 			SQL_GetError(dbc, error, sizeof(error))
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
 		} else {
-
 			new String:topTemp[128];
 			int z = 0;
-			//char sizeOfChar[1] = "a";
 			while (SQL_FetchRow(query2) && z < 25)
 			{
 				SQL_FetchString(query2, 0, topTemp, sizeof(topTemp));
 				if(printToServer == 1) PrintToServer("Getting top player:%s", topTemp);
-				//Format(topRanks[z][], sizeof(sizeOfChar)*128, "%s", topTemp);
 				strcopy(topRanks[z], 128, topTemp);
 				z++;
 			}
