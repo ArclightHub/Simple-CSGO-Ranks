@@ -56,7 +56,7 @@ int higherRankThreshold = 200; //how many points above a user should me consider
 int higherRankFactor = 5; //if the shot user is much higher than the user who shot them the higher ranked user should lose more rank.
 int killPoints = 5;
 int startRank = 100; //new users start with this rank.
-int dbCleaning = 2;
+int dbCleaning = 0;
 
 //begin
 public Plugin:myinfo =
@@ -112,6 +112,10 @@ public void addRank(int steamId, int points, int client)
 
 public void purgeOldUsers() 
 {
+	if(dbCleaning == 0) PrintToServer("DB Cleaning: Disabled");
+	else if(dbCleaning == 1) PrintToServer("DB Cleaning: Basic");
+	else if(dbCleaning == 2) PrintToServer("DB Cleaning: Full");
+	
 	if( dbCleaning == 0 ) return;
 
 	if (!SQL_FastQuery(dbc, "DELETE FROM steam WHERE rank = 100"))
