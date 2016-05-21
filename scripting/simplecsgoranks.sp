@@ -106,7 +106,7 @@ public void setRank(int steamId, int rank, int client) //done
 //adds the given number of points to the given user
 public void addRank(int steamId, int points, int client)
 {
-	if(threadedCache == 0) setRank(steamId, (getRank(steamId) + points), client);
+	if(threadedCache == 0) setRank(steamId, (getRank(steamId, client) + points), client);
 	else setRank(steamId, (getRankCached(steamId, 0, 0, 0) + points), client);
 }
 
@@ -206,6 +206,25 @@ public OnClientDisconnect(client){
 
 //Threaded code
 
+public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
+{
+	if(HQuery == INVALID_HANDLE){
+		PrintToServer("Query failed! %s", error);
+	}
+	else{
+		if(SQL_FetchRow(HQuery))
+		{
+			new String:data[65];
+			SQL_FetchString(HQuery, 0, data, sizeof(data))
+			decl String:name[64];
+			GetClientName(client, name, sizeof(name));
+			ranksText2[client] = data;
+		}
+	}
+
+	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
+}
+
 public updateThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
@@ -232,6 +251,11 @@ public queryCallback(Handle:owner, Handle:HQuery, const String:error[], any:clie
 
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 	dbLocked = 0; //unlock db after everything is done
+}
+
+public Action:Timer_Ranks(Handle:timer)
+{
+	updateRanksText();
 }
 
 public Action:Timer_Cache(Handle:timer)
@@ -298,10 +322,13 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 			}
 		}
 	}
-	if(printToServer == 1) PrintToServer("Current Client %d", currentClient);
-	if(currentClient == -1) return getRank(steamId); //failed to look up client
+	if(currentClient == -1) {
+		if(usesClient == 1) return getRank(steamId , client);
+		else return getRank(steamId , -1); //failed to look up client
+	}
 	else if(rankCacheValidate[currentClient] == 0){
-		return getRank(steamId);
+		if(usesClient == 1) return getRank(steamId , client);
+		else return getRank(steamId , -1);
 	}
 	else{
 		if(invalidateCache == 1) rankCacheValidate[currentClient] = 0; //invalidate the cached copy, this flag is used when the query changes the rank
@@ -312,7 +339,7 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 //end Threaded
 
 //this is called whenever the rank command is used or another method needs to get a rank
-public int getRank(int steamId)
+public int getRank(int steamId, int client)
 {
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
@@ -343,8 +370,14 @@ public int getRank(int steamId)
 			SQL_FetchString(query2, 0, name, sizeof(name))
 			if(printToServer == 1) PrintToServer("Getting rank of %s : %s", steamId, name)
 			rank = StringToInt(name);
+					
+			if(client > 0){
+				rankCache[client] = rank;
+				rankCacheValidate[client] = 1;
+			}
 		}
 	}
+	
 	CloseHandle(query2);
 	return rank; 
 }
@@ -357,12 +390,22 @@ public getRank2(int steamId, int i)
 		SQL_GetError(dbc, errorc, sizeof(errorc));
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
+	
+	
 	newUser(steamId);
 	new String:ssteamId[65];
 	IntToString(steamId,ssteamId,sizeof(ssteamId));
 	new String:query[400];
 	Format(query, sizeof(query), "(SELECT CONCAT((SELECT count(steamId)+1 from steam where cast(rank as signed) > cast((SELECT rank from steam WHERE steamId =  %s LIMIT 1) as signed)),'/', (SELECT count(steamId) from steam)))", ssteamId); //limited
 	if(printToServer == 1) PrintToServer("query: %s", query);
+	
+	if(immediateMode == 1)
+	{
+		SQL_TQuery(dbt, positionThread, query, i);
+		return;
+	}
+	
+	
 	new String:name[65];// = "h"
 	new Handle:query2 = SQL_Query(dbc, query);
 	if (query2 == INVALID_HANDLE)
@@ -467,8 +510,8 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 			SQL_GetError(dbc, errorc, sizeof(errorc));
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
-		newUser(steamId1);
-		newUser(steamId2);
+		if(rankCacheValidate[client] == 0) newUser(steamId1);
+		if(rankCacheValidate[client2] == 0) newUser(steamId2);
 		SQL_TQuery(dbc, updateThread, query, 0);
 		SQL_TQuery(dbc, updateThread, query2, 0);
 		
@@ -653,7 +696,7 @@ public void copyOut()
 				//print out info
 				GetClientName(client, name1, sizeof(name1)); //shooter
 				GetClientName(client2, name2, sizeof(name2)); //got shot
-				if(threadedCache == 0) CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRank(StringToInt(steamId1)), name2, getRank(StringToInt(steamId2)) );
+				if(threadedCache == 0) CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRank(StringToInt(steamId1), client), name2, getRank(StringToInt(steamId2), client2) );
 				else CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
 				updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
 				updateName(StringToInt(steamId2), name2);
@@ -677,7 +720,7 @@ public void copyOut()
 					//add +2 for assist
 					addRank(StringToInt(steamId4), 2, client3);
 					
-					if(threadedCache == 0) CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4, getRank(StringToInt(steamId4)) );
+					if(threadedCache == 0) CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4, getRank(StringToInt(steamId4), client3) );
 					else CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
 				}
 			}
@@ -780,7 +823,10 @@ public OnPluginStart()
 		databaseCheck = databaseName; //update it
 
 		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		if(threadedWorker == 1) CreateTimer(2.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
+		if(threadedWorker == 1){
+			CreateTimer(2.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
+			if(immediateMode == 1) CreateTimer(15.0, Timer_Ranks, _, TIMER_REPEAT); //begin caching worker
+		}
 	}
 	else{
 		PrintToServer("Database Failure. Please make sure your MySQL database is correctly set up. If you believe it is please check the databases.cfg file, check the permissions and check the port."); //inform the user that its broken
@@ -920,13 +966,13 @@ public updateRanksText(){
 	for(new i=1; i <= maxclients; i++)
 	{
 		ranksText[i] = 0;
-		if(IsClientInGame(i)) 
+		if(IsClientInGame(i) && !IsFakeClient(i)) 
 		{
 			GetClientAuthId(i, AuthId_Steam3, steamId1, sizeof(steamId1));
 			ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
 			ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
 			ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
-			if(threadedCache == 0) ranksText[i] = getRank(StringToInt(steamId1));
+			if(threadedCache == 0) ranksText[i] = getRank(StringToInt(steamId1), i);
 			else ranksText[i] = getRankCached(StringToInt(steamId1), 1, i, 0);
 			getRank2(StringToInt(steamId1), i);
 		}
