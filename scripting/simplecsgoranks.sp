@@ -845,13 +845,13 @@ public int GetCleaningConvar()
 //called at start of plugin, sets everything up.
 public OnPluginStart()
 {
-	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "1", "Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
+	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "0", "Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
 	sm_simplecsgoranks_kill_points = CreateConVar("sm_simplecsgoranks_kill_points", "5", "The number of points gained per kill")
 	sm_simplecsgoranks_higher_rank_additional = CreateConVar("sm_simplecsgoranks_higher_rank_additional", "5", "Additional points gained when killing a higher ranked player.")
 	sm_simplecsgoranks_higher_rank_gap = CreateConVar("sm_simplecsgoranks_higher_rank_gap", "500", "Difference between players ranks needed to consider one to be a higher ranked player.")
 
 	sm_simplecsgoranks_database = CreateConVar("sm_simplecsgoranks_database", "default", "Allows changing of the database used from databases.cfg")
-	sm_simplecsgoranks_cleaning = CreateConVar("sm_simplecsgoranks_cleaning", "2", "(0)Nothing. (1) Cleans the database. (2) Clears players who have no kills for more than two months.")
+	sm_simplecsgoranks_cleaning = CreateConVar("sm_simplecsgoranks_cleaning", "1", "(0)Nothing. (1) Cleans the database. (2) Clears players who have no kills for more than two months.")
 	sm_simplecsgoranks_debug = CreateConVar("sm_simplecsgoranks_debug", "0", "Enable or disable advanced error messages. (0 or 1)")
 
 	int flags = sm_simplecsgoranks_database.Flags;
@@ -865,7 +865,17 @@ public OnPluginStart()
 	sm_simplecsgoranks_mode.Flags = flags;
 	
 
-	AutoExecConfig(true, "simplecsgoranks", "sourcemod");
+	decl String:server[255];
+	new Handle:host = FindConVar("sm_basepath");
+	GetConVarString(host, server, sizeof(server));
+	ReplaceString(server, sizeof(server), "addons", "", false);
+	ReplaceString(server, sizeof(server), "/", "", false);
+	ReplaceString(server, sizeof(server), "\\", "", false);
+	
+	Format(server, sizeof(server), "%s%s", "simplecsgoranks-", server);
+	
+	PrintToServer("%s",server);
+	AutoExecConfig(true, server, "sourcemod");
 	
 	if(GetModeConvar()) immediateMode = GetModeConvar();
 	
