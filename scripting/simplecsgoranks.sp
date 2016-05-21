@@ -847,7 +847,7 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 	
 	if( immediateMode == 1 ) {
 		
-		userShot(getSteamIdNumber(attacker),getSteamIdNumber(userId), attacker, userId);
+		if(GetClientTeam(userId) != GetClientTeam(attacker)) userShot(getSteamIdNumber(attacker),getSteamIdNumber(userId), attacker, userId);
 		return Plugin_Continue;
 	}
 	
