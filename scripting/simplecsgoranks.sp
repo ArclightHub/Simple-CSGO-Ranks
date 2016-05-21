@@ -838,7 +838,7 @@ public int GetCleaningConvar()
 {
 	char buffer[128]
 	sm_simplecsgoranks_cleaning.GetString(buffer, 128)
-	return StringToInt(buffer);
+	return (StringToInt(buffer) ? StringToInt(buffer) : -1 );
 }
 
 public Action:Timer_Verify(Handle:timer)
@@ -848,6 +848,7 @@ public Action:Timer_Verify(Handle:timer)
 	PrintToServer("sm_simplecsgoranks_higher_rank_additional %d",higherRankFactor);
 	PrintToServer("sm_simplecsgoranks_kill_points %d",killPoints);
 	PrintToServer("sm_simplecsgoranks_cleaning %d",dbCleaning);
+	if( dbCleaning > -1) purgeOldUsers();
 }
 
 public OnConfigsExecuted()
@@ -933,7 +934,7 @@ public OnPluginStart()
 	else{
 		PrintToServer("Database Failure. Please make sure your MySQL database is correctly set up. If you believe it is please check the databases.cfg file, check the permissions and check the port."); //inform the user that its broken
 	}
-	if(ready) purgeOldUsers();
+	//if(ready) purgeOldUsers();
 }
 
 public Action:Event_BombDefused(Handle:event, const String:name[], bool:dontBroadcast) //new
