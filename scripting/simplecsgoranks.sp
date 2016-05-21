@@ -841,6 +841,15 @@ public int GetCleaningConvar()
 	return StringToInt(buffer);
 }
 
+public Action:Timer_Verify(Handle:timer)
+{
+	PrintToServer("sm_simplecsgoranks_mode %d",immediateMode);
+	PrintToServer("sm_simplecsgoranks_higher_rank_gap %d",higherRankThreshold);
+	PrintToServer("sm_simplecsgoranks_higher_rank_additional %d",higherRankFactor);
+	PrintToServer("sm_simplecsgoranks_kill_points %d",killPoints);
+	PrintToServer("sm_simplecsgoranks_cleaning %d",dbCleaning);
+}
+
 public OnConfigsExecuted()
 {
 	if(GetModeConvar()) immediateMode = GetModeConvar();
@@ -851,6 +860,8 @@ public OnConfigsExecuted()
 
 	if(GetCleaningConvar()) dbCleaning = GetCleaningConvar();
 	GetDatabaseConvar();
+	
+	CreateTimer(10.0, Timer_Verify);
 }
 //called at start of plugin, sets everything up.
 public OnPluginStart()
