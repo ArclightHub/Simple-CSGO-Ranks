@@ -160,7 +160,7 @@ public void newUser(int steamId) //done
 	IntToString(startRank,srank,sizeof(srank));
 	IntToString(GetTime(),stime,sizeof(stime));
 	new String:query[128];
-	Format(query, sizeof(query), "INSERT INTO steam (steamId, rank, age) VALUES(%s,%s,%s)", ssteamId, srank, stime);
+	Format(query, sizeof(query), "INSERT INTO steam (steamId, rank, age) VALUES(%s,%s,%s) ON DUPLICATE KEY UPDATE steamId = steamId", ssteamId, srank, stime); //dont wanna see anymore errors
 
 	if(printToServer == 1) PrintToServer("query: %s", query);
 	
@@ -180,7 +180,7 @@ public void newUser(int steamId) //done
 		}
 	}
 	else{
-		SQL_TQuery(dbc, updateThread, query, 0);
+		SQL_TQuery(dbc, noCallback, query, 0);
 	}
 
 	return;
@@ -662,7 +662,7 @@ public void updateName(int steamId, char name[64])
 	ReplaceString(name, sizeof(name), "join", "", false);
 	SQL_EscapeString(dbc, name, buffer, sizeof(buffer));
 	new String:query[700]; //surely enough for a long name?
-	Format(query, sizeof(query), "INSERT INTO steamname (steamId,name) VALUES ('%d','\%s\') ON DUPLICATE KEY UPDATE name='\%s\'", steamId, buffer, buffer); //name changed to buffer
+	Format(query, sizeof(query), "INSERT IGNORE INTO steamname (steamId,name) VALUES ('%d','\%s\') ON DUPLICATE KEY UPDATE name='\%s\'", steamId, buffer, buffer); //name changed to buffer
 	//make query
 	if(printToServer == 1) PrintToServer("query: %s", query);
 
