@@ -30,6 +30,7 @@ int cacheCurrentClient = 1;
 int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
 int threadedWorker = 1; //Automatically load rank data in the background in another thread to improve speeds
 int immediateMode = 0; //Use immediate thread instead of slow round method. Good for Deathmatch
+int activeThreads = 0;
 int ranksText[320];
 new String:databaseName[128] = "default";
 new String:databaseNew[128] = "default";
@@ -164,14 +165,15 @@ public void newUser(int steamId) //done
 
 	if(printToServer == 1) PrintToServer("query: %s", query);
 	
-	if(dbc == INVALID_HANDLE){ 
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-	}
+
 	
 	if( immediateMode == 0 )
 	{
+		if(dbc == INVALID_HANDLE){ 
+			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbc, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		}
 		if (!SQL_FastQuery(dbc, query))
 		{
 			new String:error[255]
@@ -180,7 +182,14 @@ public void newUser(int steamId) //done
 		}
 	}
 	else{
-		SQL_TQuery(dbc, noCallback, query, 0);
+		if (dbt == INVALID_HANDLE)
+		{
+			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbt, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		}
+		activeThreads++;
+		SQL_TQuery(dbt, noCallback, query, 0);
 	}
 
 	return;
@@ -238,7 +247,7 @@ public topThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 			ranksText2[client] = data;
 		}
 	}
-
+	activeThreads--;
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -257,7 +266,7 @@ public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:cli
 			ranksText2[client] = data;
 		}
 	}
-
+	activeThreads--;
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -266,7 +275,7 @@ public updateThread(Handle:owner, Handle:HQuery, const String:error[], any:clien
 	if(HQuery == INVALID_HANDLE){
 		PrintToServer("Update Thread Query failed! %s", error);
 	}
-
+	activeThreads--;
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -284,7 +293,7 @@ public cacheThread(Handle:owner, Handle:HQuery, const String:error[], any:client
 			rankCacheValidate[client] = 1;  //Validate once the data is copied
 		}
 	}
-
+	activeThreads--;
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 	dbLocked = 0; //unlock db after everything is done
 }
@@ -294,9 +303,8 @@ public noCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
 	if(HQuery == INVALID_HANDLE){
 		PrintToServer("noCallback Query failed! %s", error);
 	}
-
+	activeThreads--;
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
-	dbLocked = 0; //unlock db after everything is done
 }
 
 
@@ -314,6 +322,8 @@ public Action:Timer_Ranks(Handle:timer)
 public Action:Timer_Cache(Handle:timer)
 {
 	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
+	if(activeThreads < 3) return Plugin_Continue;
+	
 	new maxclients = GetMaxClients();
 	int skipped = 0;
 	while(!IsClientInGame(1+cacheCurrentClient%maxclients) && skipped < maxclients)
@@ -325,6 +335,7 @@ public Action:Timer_Cache(Handle:timer)
 	if( 1+cacheCurrentClient%maxclients  > maxclients) return Plugin_Continue;
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
 	if(IsFakeClient(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
+	
 		
 	if(printToServer == 1) PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) {
@@ -351,6 +362,7 @@ public Action:Timer_Cache(Handle:timer)
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	dbLocked = 1; //Lock our own DB
+	activeThreads++;
 	SQL_TQuery(dbt, cacheThread, query, 1+cacheCurrentClient%maxclients);
 
 	cacheCurrentClient++;
@@ -438,13 +450,7 @@ public int getRank(int steamId, int client)
 //players position overall
 public getRank2(int steamId, int i)
 {
-	if(dbc == INVALID_HANDLE){ 
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-	}
-	
-	
+
 	newUser(steamId);
 	new String:ssteamId[65];
 	IntToString(steamId,ssteamId,sizeof(ssteamId));
@@ -454,10 +460,23 @@ public getRank2(int steamId, int i)
 	
 	if(immediateMode == 1)
 	{
+		if (dbt == INVALID_HANDLE)
+		{
+			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbt, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		}
+		activeThreads++;
 		SQL_TQuery(dbt, positionThread, query, i);
 		return;
 	}
 	
+	
+	if(dbc == INVALID_HANDLE){ 
+		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+		SQL_GetError(dbc, errorc, sizeof(errorc));
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+	}
 	
 	new String:name[65];// = "h"
 	new Handle:query2 = SQL_Query(dbc, query);
@@ -557,16 +576,18 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 		GetClientName(client2, name2, sizeof(name2)); //got shot
 		CPrintToChatAll("{darkred}%s (%d) {green}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
 		
-		if (dbc == INVALID_HANDLE)
+		if (dbt == INVALID_HANDLE)
 		{
-			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-			SQL_GetError(dbc, errorc, sizeof(errorc));
+			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbt, errorc, sizeof(errorc));
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
 		if(rankCacheValidate[client] == 0) newUser(steamId1);
 		if(rankCacheValidate[client2] == 0) newUser(steamId2);
-		SQL_TQuery(dbc, updateThread, query, 0);
-		SQL_TQuery(dbc, updateThread, query2, 0);
+		activeThreads++;
+		SQL_TQuery(dbt, updateThread, query, 0);
+		activeThreads++;
+		SQL_TQuery(dbt, updateThread, query2, 0);
 		updateName(steamId1, name1); //make sure the users name is in the DB
 		updateName(steamId2, name2);
 		
@@ -667,14 +688,14 @@ public void updateName(int steamId, char name[64])
 	if(printToServer == 1) PrintToServer("query: %s", query);
 
 	//add user to db
-	if(dbc == INVALID_HANDLE){ 
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-	}
 	
 	if(threadedWorker == 0)
 	{
+		if(dbc == INVALID_HANDLE){ 
+			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbc, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		}
 		if (!SQL_FastQuery(dbc, query))
 		{
 			new String:error[255]
@@ -683,7 +704,15 @@ public void updateName(int steamId, char name[64])
 		}
 	}
 	else{
-		SQL_TQuery(dbc, noCallback, query, 0);
+		
+		if (dbt == INVALID_HANDLE)
+		{
+			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbt, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		}
+		activeThreads++;
+		SQL_TQuery(dbt, noCallback, query, 0);
 	}
 }
 
@@ -925,9 +954,9 @@ public OnPluginStart()
 
 		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		if(threadedWorker == 1){
-			CreateTimer(2.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
-			CreateTimer(120.0, Timer_Top, _, TIMER_REPEAT);
-			if(immediateMode == 1) CreateTimer(15.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
+			CreateTimer(4.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
+			CreateTimer(300.0, Timer_Top, _, TIMER_REPEAT);
+			if(immediateMode == 1) CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 			
 		}
 	}
@@ -1026,12 +1055,6 @@ public OnMapStart ()
 
 public void getTop()
 {
-	if(dbc == INVALID_HANDLE){ 
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-	}
-
 	new String:query[256];
 	query = "select concat(\"{darkred}\", stn.name,\"{darkblue} - {green}\",a.rank) from (select * from steam order by cast(rank as decimal) desc limit 25) a join steamname stn on stn.steamId = a.steamId limit 25";
 
@@ -1039,9 +1062,23 @@ public void getTop()
 
 	if( immediateMode == 1 )
 	{
-		SQL_TQuery(dbc, topThread, query, 0);
+		if (dbt == INVALID_HANDLE)
+		{
+			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbt, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		}
+		activeThreads++;
+		SQL_TQuery(dbt, topThread, query, 0);
 	}
 	else {
+		
+		if(dbc == INVALID_HANDLE){ 
+			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbc, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+		}
+	
 		new Handle:query2 = SQL_Query(dbc, query);
 		if (query2 == INVALID_HANDLE)
 		{
