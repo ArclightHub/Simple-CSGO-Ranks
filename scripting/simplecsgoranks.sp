@@ -328,6 +328,7 @@ public Action:Timer_Cache(Handle:timer)
 	int skipped = 0;
 	while(!IsClientInGame(1+cacheCurrentClient%maxclients) && skipped < maxclients)
 	{
+		rankCacheValidate[1+cacheCurrentClient%maxclients] = 0; //invalidate clients not in the game
 		skipped++;
 		cacheCurrentClient++;
 	}
