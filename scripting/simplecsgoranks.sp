@@ -208,14 +208,14 @@ public int getSteamIdNumber(int client)
 }
 
 public OnClientPostAdminCheck(client){
+	rankCacheValidate[client] = 0;
 	cacheCurrentClient = client; //attempt to cache a player immediately after they join
 	CreateTimer(0.1, Timer_Cache);
 	return;
 }
 
 public OnClientDisconnect(client){
-	new maxclients = GetMaxClients();
-	rankCacheValidate[1+cacheCurrentClient%maxclients] = 0;
+	rankCacheValidate[client] = 0;
 	return;
 }
 
