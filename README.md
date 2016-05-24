@@ -45,7 +45,7 @@ There are four basic console variables:
 <li>sm_simplecsgoranks_higher_rank_gap<ul><li>Difference between players ranks needed to consider one to be a higher ranked player.</li></ul></li>
 </ul>
 
-Additionally there are four advenced console variables:
+Additionally there are four advanced console variables:
 <ul>
 <li>sm_simplecsgoranks_database<ul><li>Allows changing of the database used from databases.cfg</li></ul></li>
 <li>sm_simplecsgoranks_cleaning<ul><li>(0)Nothing. (1) Cleans the database. (2) Clears players who have no kills for more than two months.</li></ul></li>
