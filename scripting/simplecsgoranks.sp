@@ -32,7 +32,7 @@ int threadedCache = 1; //Automatically load rank data in the background in anoth
 int immediateMode = 0; //Use immediate thread instead of slow round method. Good for Deathmatch
 int useMaxThreads = 0; //Use the maximum safe number of threads at once. Experimental
 int activeThreads = 0;
-int printThreadToServer = 1;
+//int printThreadToServer = 1;
 
 int ranksText[320];
 new String:databaseName[128] = "default";
@@ -243,10 +243,10 @@ public topThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 	}
 	activeThreads--;
 
-	if(printThreadToServer == 1) {
+	/*if(printThreadToServer == 1 && activeThreads > 0) {
 		PrintToServer("Top data updated by thread.");
 		PrintToServer("Active Threads: %d", activeThreads);
-	}
+	}*/
 
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
@@ -267,10 +267,10 @@ public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:cli
 		}
 	}
 	activeThreads--;
-	if(printThreadToServer == 1) {
+	/*if(printThreadToServer == 1 && activeThreads > 0) {
 		PrintToServer("Position data updated by thread.");
 		PrintToServer("Active Threads: %d", activeThreads);
-	}
+	}*/
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -298,10 +298,10 @@ public cacheThread(Handle:owner, Handle:HQuery, const String:error[], any:client
 		}
 	}
 	activeThreads--;
-	if(printThreadToServer == 1) {
+	/*if(printThreadToServer == 1 && activeThreads > 0) {
 		PrintToServer("Cache data updated by thread.");
 		PrintToServer("Active Threads: %d", activeThreads);
-	}
+	}*/
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -901,8 +901,9 @@ public Action:Timer_Verify(Handle:timer)
 	if( dbCleaning > -1) purgeOldUsers();
 
 	if(threadedCache == 1){
-		if(useMaxThreads == 0) CreateTimer(4.0, Timer_Cache, _, TIMER_REPEAT); //normal mode
-		else CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT);	
+	CreateTimer(0.3, Timer_Cache, _, TIMER_REPEAT);
+	CreateTimer(300.0, Timer_Top, _, TIMER_REPEAT);
+	if(immediateMode == 1) CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 	}
 }
 
@@ -983,11 +984,6 @@ public OnPluginStart()
 		databaseCheck = databaseName; //update it
 
 		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		if(threadedCache == 1){	
-			CreateTimer(300.0, Timer_Top, _, TIMER_REPEAT);
-			CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
-			
-		}
 	}
 	else{
 		PrintToServer("Database Failure. Please make sure your MySQL database is correctly set up. If you believe it is please check the databases.cfg file, check the permissions and check the port."); //inform the user that its broken
