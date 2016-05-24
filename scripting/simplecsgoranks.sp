@@ -322,7 +322,7 @@ public Action:Timer_Ranks(Handle:timer)
 public Action:Timer_Cache(Handle:timer)
 {
 	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
-	if(activeThreads < 3) return Plugin_Continue;
+	if(activeThreads > 8) return Plugin_Continue;
 	
 	new maxclients = GetMaxClients();
 	int skipped = 0;
