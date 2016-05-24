@@ -347,7 +347,7 @@ public Action:Timer_Cache(Handle:timer)
 		if(activeThreads > 6) return Plugin_Continue;
 	}
 	else{
-		if(activeThreads > 15) return Plugin_Continue;
+		if(activeThreads > 12) return Plugin_Continue;
 	}
 
 
