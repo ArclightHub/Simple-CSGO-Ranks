@@ -37,13 +37,19 @@ OR
 It is also recommended that you increase the buffer pool if you have over 20000 players.<br>
 innodb_buffer_pool_size=384M
 
-There are six console variables:
+There are four basic console variables:
 <ul>
+<li>sm_simplecsgoranks_mode<ul><li>Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.</li></ul></li>
 <li>sm_simplecsgoranks_kill_points<ul><li>The number of points gained per kill</li></ul></li>
 <li>sm_simplecsgoranks_higher_rank_additional<ul><li>Additional points gained when killing a higher ranked player.</li></ul></li>
 <li>sm_simplecsgoranks_higher_rank_gap<ul><li>Difference between players ranks needed to consider one to be a higher ranked player.</li></ul></li>
+</ul>
+
+Additionally there are four advenced console variables:
+<ul>
 <li>sm_simplecsgoranks_database<ul><li>Allows changing of the database used from databases.cfg</li></ul></li>
 <li>sm_simplecsgoranks_cleaning<ul><li>(0)Nothing. (1) Cleans the database. (2) Clears players who have no kills for more than two months.</li></ul></li>
+<li>sm_simplecsgoranks_useMaxThreads<ul><li>Allows more threads than usual. Might be useful for servers with a large number of players.</li></ul></li>
 <li>sm_simplecsgoranks_debug<ul><li>Enable or disable advanced error messages. (0 or 1)</li></ul></li>
 </ul>
 
