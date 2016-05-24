@@ -1,0 +1,35 @@
+0.2.2: Added deathmatch/immediate mode.
+Added additional methods for threaded queries.
+New console Variables:
+sm_simplecsgoranks_mode: Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.
+sm_simplecsgoranks_useMaxThreads: Allows more threads than usual. Might be useful for servers with a large number of players.
+
+0.2.1: Added new caching method with a threaded worker to silently cache ranks in the background, reducing lag, bandwidth usage and calculation time.
+New console Variables: 
+sm_simplecsgoranks_kill_points: The base number of points gained per kill.
+sm_simplecsgoranks_higher_rank_additional: Additional points gained when killing a higher ranked player.
+sm_simplecsgoranks_higher_rank_gap: Difference between players ranks needed to consider one to be a higher ranked player.
+sm_simplecsgoranks_cleaning: (0) Nothing. (1) Cleans the database. (2) Clears players who have no kills for more than two months.
+
+0.2.0: Cleaned up some server side message clutter. Added convars. Made suggested change to allow larger player kills during warmup rounds. New !top commands added.
+New Top Commands: !top !top10 !top25
+New Console Variables: 
+sm_simplecsgoranks_database: Allows changing of the database used from databases.cfg
+sm_simplecsgoranks_debug: Enable or disable advanced error messages. (0 or 1)
+
+0.1.9: Allow the user to change a variable and recompile to change the database they want to use. This allows for multiple game servers working from the same server easily. Assists now grant +2 rank. If the database connection is lost the addon will attempt to reconnect indefinitely, dropping data when it cannot connect to prevent its buffer filling. The addon can now run many game servers from the same database.
+Testing for SSH tunnels has been completed and it is confirmed as working well. 
+
+0.1.8: Various fixes to issues and exceptions. Changes to some print outs. 
+
+0.1.7: It has been decided that for now the query method is fast enough for the addon with most taking less than 0.01 seconds. Instead this version will address bugfixes rather than add additional features. Added extra memory for query to allow larger player names. Removed a lot of console spam, it will only show with the debugging flags on now. Made some queries faster by adding limits when the correct ids have been found.
+
+0.1.6: Added ranks position in the ladder (eg 26/134). Added additional purge query to clean DB a little bit better. Changes to some queries to make rank calculation slightly faster. Ranks can now be seen when dead or in spec mode.
+
+0.1.5: Added the !rank command to print out the players rank. Only works with alive players so that dead/spec players cannot spam chat.
+
+0.1.4: Major changes to the way queries are run. Database handles are shared more now and some queries are up to 4 times faster.
+
+0.1.2-0.1.3: Version is now output to the server at the end of the round. Database tables are automatically created and cleaned when needed.
+
+0.1.1: Teamkills are no longer counted towards a players rank.

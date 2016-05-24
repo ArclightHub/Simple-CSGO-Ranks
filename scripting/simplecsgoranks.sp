@@ -487,34 +487,34 @@ public getRank2(int steamId, int i)
 		SQL_TQuery(dbt, positionThread, query, i);
 		return;
 	}
-	
-	
-	if(dbc == INVALID_HANDLE){ 
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-	}
-	
-	new String:name[65];// = "h"
-	new Handle:query2 = SQL_Query(dbc, query);
-	if (query2 == INVALID_HANDLE)
-	{
-		new String:error[255];
-		SQL_GetError(dbc, error, sizeof(error));
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error);
-	} 
 	else {
-		while (SQL_FetchRow(query2))
-		{
-			SQL_FetchString(query2, 0, name, sizeof(name))
-			if(printToServer == 1) PrintToServer("Getting rank of %s : %s", steamId, name)
+		if(dbc == INVALID_HANDLE){ 
+			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbc, errorc, sizeof(errorc));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
+	
+		new String:name[65];// = "h"
+		new Handle:query2 = SQL_Query(dbc, query);
+		if (query2 == INVALID_HANDLE)
+		{
+			new String:error[255];
+			SQL_GetError(dbc, error, sizeof(error));
+			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error);
+		} 
+		else {
+			while (SQL_FetchRow(query2))
+			{
+				SQL_FetchString(query2, 0, name, sizeof(name))
+				if(printToServer == 1) PrintToServer("Getting rank of %s : %s", steamId, name)
+			}
+		}
+		CloseHandle(query2);
+		decl String:name1[64];
+		GetClientName(i, name1, sizeof(name1));
+		if(printToServer == 1) PrintToServer("Player %s : %s", name1, name);
+		ranksText2[i] = name;
 	}
-	CloseHandle(query2);
-	decl String:name1[64];
-	GetClientName(i, name1, sizeof(name1));
-	if(printToServer == 1) PrintToServer("Player %s : %s", name1, name);
-	ranksText2[i] = name;
 }
 
 
@@ -1156,14 +1156,14 @@ public updateRanksText(){
 
 public Action OnClientSayCommand(int client, const char[] command, const char[] args) {
 	new String:name[64];
-	char ranksChatCommands[][] = { "!rank", "rank" };
+	char ranksChatCommands[][] = { "!rank", "rank", "!ranks", "ranks" };
 	for (int i = 0; i < sizeof(ranksChatCommands); i++) {
 	if (strcmp(args[0], ranksChatCommands[i], false) == 0) {
 			GetClientName(client, name, sizeof(name));
 			CPrintToChatAll("{green}%s's {darkred}Score: %d | Rank: %s", name, ranksText[client],ranksText2[client]); //Use this to change the !ranks text
 		}
 	}
-	if((strcmp(args[0], "!top10", false) == 0) || (strcmp(args[0], "!top", false) == 0)){
+	if( (strcmp(args[0], "!top10", false) == 0) || (strcmp(args[0], "!top", false) == 0) || (strcmp(args[0], "top", false) == 0) ){
 		PrintToChat(client, "Top 10 Players");
 		for(int z = 0; z < 10; z++){
 			CPrintToChat(client,"%d: %s", z+1, topRanks[z]);
