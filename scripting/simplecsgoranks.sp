@@ -29,8 +29,7 @@ int cacheCurrentClient = 1;
 //Global Variables, you can touch.
 
 //Thread stuff
-int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
-int threadedWorker = 1; //Automatically load rank data in the background in another thread to improve speeds
+int threadedCache = 1; //Automatically load rank data in the background in another thread to improve speeds
 int immediateMode = 0; //Use immediate thread instead of slow round method. Good for Deathmatch
 int useMaxThreads = 0; //Use the maximum safe number of threads at once. Experimental
 int activeThreads = 0;
@@ -476,7 +475,7 @@ public getRank2(int steamId, int i)
 	Format(query, sizeof(query), "(SELECT CONCAT((SELECT count(steamId)+1 from steam where cast(rank as signed) > cast((SELECT rank from steam WHERE steamId =  %s LIMIT 1) as signed)),'/', (SELECT count(steamId) from steam)))", ssteamId); //limited
 	if(printToServer == 1) PrintToServer("query: %s", query);
 	
-	if(immediateMode == 1)
+	if(threadedCache == 1)
 	{
 		if (dbt == INVALID_HANDLE)
 		{
@@ -707,7 +706,7 @@ public void updateName(int steamId, char name[64])
 
 	//add user to db
 	
-	if(threadedWorker == 0)
+	if(threadedCache == 0)
 	{
 		if(dbc == INVALID_HANDLE){ 
 			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
@@ -904,7 +903,7 @@ public Action:Timer_Verify(Handle:timer)
 	PrintToServer("sm_simplecsgoranks_cleaning %d",dbCleaning);
 	if( dbCleaning > -1) purgeOldUsers();
 
-	if(threadedWorker == 1){
+	if(threadedCache == 1){
 		if(useMaxThreads == 0) CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //normal mode
 		else CreateTimer(0.1, Timer_Cache, _, TIMER_REPEAT);	
 	}
@@ -987,9 +986,9 @@ public OnPluginStart()
 		databaseCheck = databaseName; //update it
 
 		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		if(threadedWorker == 1){	
+		if(threadedCache == 1){	
 			CreateTimer(300.0, Timer_Top, _, TIMER_REPEAT);
-			if(immediateMode == 1) CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
+			CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 			
 		}
 	}
