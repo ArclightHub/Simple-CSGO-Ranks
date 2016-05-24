@@ -32,6 +32,7 @@ int cacheCurrentClient = 1;
 int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
 int threadedWorker = 1; //Automatically load rank data in the background in another thread to improve speeds
 int immediateMode = 0; //Use immediate thread instead of slow round method. Good for Deathmatch
+int useMaxThreads = 0; //Use the maximum safe number of threads at once. Experimental
 int activeThreads = 0;
 int printThreadToServer = 1;
 
@@ -47,6 +48,7 @@ int shot[255];
 
 //convars
 ConVar sm_simplecsgoranks_mode;
+ConVar sm_simplecsgoranks_useMaxThreads;
 
 ConVar sm_simplecsgoranks_kill_points;
 ConVar sm_simplecsgoranks_higher_rank_additional;
@@ -214,7 +216,6 @@ public int getSteamIdNumber(int client)
 public OnClientPostAdminCheck(client){
 	rankCacheValidate[client] = 0;
 	cacheCurrentClient = client; //attempt to cache a player immediately after they join
-	CreateTimer(0.1, Timer_Cache);
 	return;
 }
 
@@ -342,8 +343,15 @@ public Action:Timer_Cache(Handle:timer)
 		cacheCurrentClient++;
 	}
 	
-	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
-	if(activeThreads > 6) return Plugin_Continue;	
+	if(useMaxThreads == 0){
+		if(activeThreads > 6) return Plugin_Continue;
+	}
+	else{
+		if(activeThreads > 15) return Plugin_Continue;
+	}
+
+
+	if(dbLocked == 1) return Plugin_Continue; //Only work while idle	
 	if( 1+cacheCurrentClient%maxclients  > maxclients) return Plugin_Continue;
 	if(IsFakeClient(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) {
@@ -834,6 +842,12 @@ public void copyOut()
 }
 
 //steam stuff
+public int GetUseMaxThreadsConvar()
+{
+	char buffer[128]
+	sm_simplecsgoranks_useMaxThreads.GetString(buffer, 128)
+	return (StringToInt(buffer) ? StringToInt(buffer) : 0 );
+}
 public int GetModeConvar()
 {
 	char buffer[128]
@@ -882,18 +896,25 @@ public int GetCleaningConvar()
 
 public Action:Timer_Verify(Handle:timer)
 {
+	PrintToServer("sm_simplecsgoranks_useMaxThreads %d",useMaxThreads);
 	PrintToServer("sm_simplecsgoranks_mode %d",immediateMode);
 	PrintToServer("sm_simplecsgoranks_higher_rank_gap %d",higherRankThreshold);
 	PrintToServer("sm_simplecsgoranks_higher_rank_additional %d",higherRankFactor);
 	PrintToServer("sm_simplecsgoranks_kill_points %d",killPoints);
 	PrintToServer("sm_simplecsgoranks_cleaning %d",dbCleaning);
 	if( dbCleaning > -1) purgeOldUsers();
+
+	if(threadedWorker == 1){
+		if(useMaxThreads == 0) CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //normal mode
+		else CreateTimer(0.1, Timer_Cache, _, TIMER_REPEAT);	
+	}
 }
 
 public OnConfigsExecuted()
 {
+	if(GetUseMaxThreadsConvar()) useMaxThreads = GetUseMaxThreadsConvar();
 	if(GetModeConvar()) immediateMode = GetModeConvar();
-	
+
 	if(GetHigherRankGapConvar()) higherRankThreshold = GetHigherRankGapConvar();
 	if(GetHigherRankAdditionalConvar()) higherRankFactor = GetHigherRankAdditionalConvar();
 	if(GetKillPointsConvar()) killPoints = GetKillPointsConvar();
@@ -907,6 +928,8 @@ public OnConfigsExecuted()
 public OnPluginStart()
 {
 	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "0", "Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
+	sm_simplecsgoranks_useMaxThreads = CreateConVar("sm_simplecsgoranks_useMaxThreads", "0", "Allows more threads than usual. Might be useful for servers with a large number of players.")
+
 	sm_simplecsgoranks_kill_points = CreateConVar("sm_simplecsgoranks_kill_points", "5", "The number of points gained per kill")
 	sm_simplecsgoranks_higher_rank_additional = CreateConVar("sm_simplecsgoranks_higher_rank_additional", "5", "Additional points gained when killing a higher ranked player.")
 	sm_simplecsgoranks_higher_rank_gap = CreateConVar("sm_simplecsgoranks_higher_rank_gap", "500", "Difference between players ranks needed to consider one to be a higher ranked player.")
@@ -924,6 +947,7 @@ public OnPluginStart()
 	sm_simplecsgoranks_higher_rank_additional.Flags = flags;
 	sm_simplecsgoranks_higher_rank_gap.Flags = flags;
 	sm_simplecsgoranks_mode.Flags = flags;
+	sm_simplecsgoranks_useMaxThreads.Flags = flags;
 	
 
 	decl String:server[255];
@@ -963,8 +987,7 @@ public OnPluginStart()
 		databaseCheck = databaseName; //update it
 
 		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		if(threadedWorker == 1){
-			CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
+		if(threadedWorker == 1){	
 			CreateTimer(300.0, Timer_Top, _, TIMER_REPEAT);
 			if(immediateMode == 1) CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 			
