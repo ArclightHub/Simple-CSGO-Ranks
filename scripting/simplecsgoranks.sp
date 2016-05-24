@@ -518,35 +518,16 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 	if(printToServer == 1) PrintToServer("query: %s", query);	
 	if( immediateMode == 0 )
 	{
-		if (dbc == INVALID_HANDLE)
+		if (dbt == INVALID_HANDLE)
 		{
-			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-			SQL_GetError(dbc, errorc, sizeof(errorc));
+			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+			SQL_GetError(dbt, errorc, sizeof(errorc));
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-		} else {
-			if (!SQL_FastQuery(dbc, query))
-			{
-				new String:error2[255]
-				SQL_GetError(dbc, error2, sizeof(error2))
-				if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error2)
-			}
-		}	
-		
-		if(printToServer == 1) PrintToServer("query: %s", query2);	
-		
-		if (dbc == INVALID_HANDLE)
-		{
-			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-			SQL_GetError(dbc, errorc, sizeof(errorc));
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-		} else {
-			if (!SQL_FastQuery(dbc, query2))
-			{
-				new String:error3[255]
-				SQL_GetError(dbc, error3, sizeof(error3))
-				if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error3)
-			}
 		}
+		activeThreads++;
+		SQL_TQuery(dbt, updateThread, query, 0);
+		activeThreads++;
+		SQL_TQuery(dbt, updateThread, query2, 0);
 	}
 	else
 	{
