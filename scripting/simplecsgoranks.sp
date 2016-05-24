@@ -326,7 +326,7 @@ public Action:Timer_Cache(Handle:timer)
 	
 	new maxclients = GetMaxClients();
 	int skipped = 0;
-	while(!IsClientInGame(1+cacheCurrentClient%maxclients) && skipped < maxclients)
+	while(!IsClientInGame(1+cacheCurrentClient%maxclients) && skipped < maxclients/4)
 	{
 		rankCacheValidate[1+cacheCurrentClient%maxclients] = 0; //invalidate clients not in the game
 		skipped++;
@@ -336,11 +336,7 @@ public Action:Timer_Cache(Handle:timer)
 	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
 	if(activeThreads > 6) return Plugin_Continue;	
 	if( 1+cacheCurrentClient%maxclients  > maxclients) return Plugin_Continue;
-	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
 	if(IsFakeClient(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
-	
-		
-	if(printToServer == 1) PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) {
 		//if the spot is empty
 		rankCacheValidate[1+cacheCurrentClient%maxclients] = 0; //invalidate the empty spot
@@ -348,7 +344,10 @@ public Action:Timer_Cache(Handle:timer)
 		return Plugin_Continue; //wait until the next call so we dont waste CPU cycles, after all this is a background task
 	}
 	
-	decl String:steamId[64]; //defused the bomb
+		
+	if(printToServer == 1) PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
+	
+	decl String:steamId[64];
 	GetClientAuthId(1+cacheCurrentClient%maxclients, AuthId_Steam3, steamId, sizeof(steamId));
 	ReplaceString(steamId, sizeof(steamId), "[U:1:", "", false);
 	ReplaceString(steamId, sizeof(steamId), "[U:0:", "", false);
@@ -956,7 +955,7 @@ public OnPluginStart()
 
 		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		if(threadedWorker == 1){
-			CreateTimer(4.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
+			CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //begin caching worker
 			CreateTimer(300.0, Timer_Top, _, TIMER_REPEAT);
 			if(immediateMode == 1) CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 			
