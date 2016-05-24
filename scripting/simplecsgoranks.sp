@@ -321,8 +321,8 @@ public Action:Timer_Ranks(Handle:timer)
 
 public Action:Timer_Cache(Handle:timer)
 {
-	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
-	if(activeThreads > 8) return Plugin_Continue;
+
+	
 	
 	new maxclients = GetMaxClients();
 	int skipped = 0;
@@ -333,6 +333,8 @@ public Action:Timer_Cache(Handle:timer)
 		cacheCurrentClient++;
 	}
 	
+	if(dbLocked == 1) return Plugin_Continue; //Only work while idle
+	if(activeThreads > 6) return Plugin_Continue;	
 	if( 1+cacheCurrentClient%maxclients  > maxclients) return Plugin_Continue;
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
 	if(IsFakeClient(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
@@ -362,7 +364,6 @@ public Action:Timer_Cache(Handle:timer)
 		SQL_GetError(dbt, errorc, sizeof(errorc));
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
-	dbLocked = 1; //Lock our own DB
 	activeThreads++;
 	SQL_TQuery(dbt, cacheThread, query, 1+cacheCurrentClient%maxclients);
 
