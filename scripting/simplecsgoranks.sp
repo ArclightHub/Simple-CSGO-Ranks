@@ -352,6 +352,7 @@ public Action:Timer_Cache(Handle:timer)
 
 	if(dbLocked == 1) return Plugin_Continue; //Only work while idle	
 	if( 1+cacheCurrentClient%maxclients  > maxclients) return Plugin_Continue;
+	if(!IsClientConnected(1+cacheCurrentClient%maxclients))	return Plugin_Continue;
 	if(IsFakeClient(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) {
 		//if the spot is empty
