@@ -21,7 +21,6 @@ Handle dbt; //handle for threaded query
 char errorc[255];
 float copyTime;
 
-int dbLocked = 0;
 int rankCache[65]; //Caches ranks for threaded operation
 int rankCacheValidate[65]; //Validation
 int cacheCurrentClient = 1;
@@ -304,7 +303,6 @@ public cacheThread(Handle:owner, Handle:HQuery, const String:error[], any:client
 		PrintToServer("Active Threads: %d", activeThreads);
 	}
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
-	dbLocked = 0; //unlock db after everything is done
 }
 
 public noCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
@@ -335,7 +333,7 @@ public Action:Timer_Cache(Handle:timer)
 	
 	new maxclients = GetMaxClients();
 	int skipped = 0;
-	while(!IsClientInGame(1+cacheCurrentClient%maxclients) && skipped < maxclients/4)
+	while(!IsClientInGame(1+cacheCurrentClient%maxclients) && skipped < 9)
 	{
 		rankCacheValidate[1+cacheCurrentClient%maxclients] = 0; //invalidate clients not in the game
 		skipped++;
@@ -349,8 +347,6 @@ public Action:Timer_Cache(Handle:timer)
 		if(activeThreads > 12) return Plugin_Continue;
 	}
 
-
-	if(dbLocked == 1) return Plugin_Continue; //Only work while idle	
 	if( 1+cacheCurrentClient%maxclients  > maxclients) return Plugin_Continue;
 	if(!IsClientConnected(1+cacheCurrentClient%maxclients))	return Plugin_Continue;
 	if(IsFakeClient(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
@@ -905,8 +901,8 @@ public Action:Timer_Verify(Handle:timer)
 	if( dbCleaning > -1) purgeOldUsers();
 
 	if(threadedCache == 1){
-		if(useMaxThreads == 0) CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT); //normal mode
-		else CreateTimer(0.1, Timer_Cache, _, TIMER_REPEAT);	
+		if(useMaxThreads == 0) CreateTimer(4.0, Timer_Cache, _, TIMER_REPEAT); //normal mode
+		else CreateTimer(1.0, Timer_Cache, _, TIMER_REPEAT);	
 	}
 }
 
@@ -1029,9 +1025,7 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 	if(shotPlayers > -1)CPrintToChatAll("{orange}----Round Over----");//PrintToChatAll("----Round Over----"); //PLUGIN_VERSION
 	if(shotPlayers > -1)CPrintToChatAll("{green}SimpleCSGORanks v%s", PLUGIN_VERSION);
 	if(shotPlayers > -1)CPrintToChatAll("{darkred}Calculating kills and ranks.");//PrintToChatAll("Pausing game: Calculating kills and ranks.");
-	dbLocked = 1;
 	copyOut();
-	dbLocked = 0;
 	
 	CPrintToChatAll("{green} -- New Round --");
 	}
@@ -1063,9 +1057,7 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 	}
 	
 	if(shotPlayers > 254) {
-	dbLocked = 1;
 	copyOut(); //if the buffer fills because you use a dumb addon that allows more than 32 players per team dont let it crash
-	dbLocked = 0;
 	}
 	if(GetClientTeam(userId) != GetClientTeam(attacker))
 	{	
