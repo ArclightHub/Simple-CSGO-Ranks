@@ -191,7 +191,7 @@ public void newUser(int steamId) //done
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
 		activeThreads++;
-		SQL_TQuery(dbt, noCallback, query, 0);
+		SQL_TQuery(dbt, noCallback, query, 0, DBPrio_High);
 	}
 
 	return;
@@ -375,7 +375,7 @@ public Action:Timer_Cache(Handle:timer)
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	activeThreads++;
-	SQL_TQuery(dbt, cacheThread, query, 1+cacheCurrentClient%maxclients);
+	SQL_TQuery(dbt, cacheThread, query, 1+cacheCurrentClient%maxclients, DBPrio_Low);
 
 	cacheCurrentClient++;
 	return Plugin_Continue;
@@ -477,7 +477,7 @@ public getRank2(int steamId, int i)
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	activeThreads++;
-	SQL_TQuery(dbt, positionThread, query, i);
+	SQL_TQuery(dbt, positionThread, query, i, DBPrio_Low);
 	return;
 }
 
@@ -525,9 +525,9 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
 		activeThreads++;
-		SQL_TQuery(dbt, updateThread, query, 0);
+		SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
 		activeThreads++;
-		SQL_TQuery(dbt, updateThread, query2, 0);
+		SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
 	}
 	else
 	{
@@ -547,9 +547,9 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 		if(rankCacheValidate[client] == 0) newUser(steamId1);
 		if(rankCacheValidate[client2] == 0) newUser(steamId2);
 		activeThreads++;
-		SQL_TQuery(dbt, updateThread, query, 0);
+		SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
 		activeThreads++;
-		SQL_TQuery(dbt, updateThread, query2, 0);
+		SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
 		updateName(steamId1, name1); //make sure the users name is in the DB
 		updateName(steamId2, name2);
 		
@@ -658,7 +658,7 @@ public void updateName(int steamId, char name[64])
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	activeThreads++;
-	SQL_TQuery(dbt, noCallback, query, 0);
+	SQL_TQuery(dbt, noCallback, query, 0, DBPrio_Normal);
 
 }
 
@@ -1016,7 +1016,7 @@ public void getTop()
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
 		activeThreads++;
-		SQL_TQuery(dbt, topThread, query, 0);
+		SQL_TQuery(dbt, topThread, query, 0, DBPrio_Low);
 	}
 	else {
 		
