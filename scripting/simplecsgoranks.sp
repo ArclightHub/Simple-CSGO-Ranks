@@ -27,10 +27,14 @@ int rankCacheValidate[65]; //Validation
 int cacheCurrentClient = 1;
 
 //Global Variables, you can touch.
+
+//Thread stuff
 int threadedCache = 1; //Experimental optimization. Should drastically improve speeds
 int threadedWorker = 1; //Automatically load rank data in the background in another thread to improve speeds
 int immediateMode = 0; //Use immediate thread instead of slow round method. Good for Deathmatch
 int activeThreads = 0;
+int printThreadToServer = 1;
+
 int ranksText[320];
 new String:databaseName[128] = "default";
 new String:databaseNew[128] = "default";
@@ -237,17 +241,14 @@ public topThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 			strcopy(topRanks[z], 128, topTemp);
 			z++;
 		}
-			
-		if(SQL_FetchRow(HQuery))
-		{
-			new String:data[65];
-			SQL_FetchString(HQuery, 0, data, sizeof(data))
-			decl String:name[64];
-			GetClientName(client, name, sizeof(name));
-			ranksText2[client] = data;
-		}
 	}
 	activeThreads--;
+
+	if(printThreadToServer == 1) {
+		PrintToServer("Top data updated by thread.");
+		PrintToServer("Active Threads: %d", activeThreads);
+	}
+
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -267,6 +268,10 @@ public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:cli
 		}
 	}
 	activeThreads--;
+	if(printThreadToServer == 1) {
+		PrintToServer("Position data updated by thread.");
+		PrintToServer("Active Threads: %d", activeThreads);
+	}
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -294,6 +299,10 @@ public cacheThread(Handle:owner, Handle:HQuery, const String:error[], any:client
 		}
 	}
 	activeThreads--;
+	if(printThreadToServer == 1) {
+		PrintToServer("Cache data updated by thread.");
+		PrintToServer("Active Threads: %d", activeThreads);
+	}
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 	dbLocked = 0; //unlock db after everything is done
 }
