@@ -1,5 +1,5 @@
 0.2.2: Added deathmatch/immediate mode.
-Added additional methods for threaded queries.
+Added additional methods for threaded queries. Should be VERY fast now.
 New console Variables:
 sm_simplecsgoranks_mode: Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.
 sm_simplecsgoranks_useMaxThreads: Allows more threads than usual. Might be useful for servers with a large number of players.
