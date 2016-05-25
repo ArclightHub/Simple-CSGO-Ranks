@@ -9,7 +9,7 @@
 #include <multicolors>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.2Dev"
+#define PLUGIN_VERSION "0.2.2"
 
 //Global Variables, do NOT touch.
 bool ready = false;
@@ -827,7 +827,8 @@ public Action:Timer_Verify(Handle:timer)
 	PrintToServer("sm_simplecsgoranks_cleaning %d",dbCleaning);
 	if( dbCleaning > -1) purgeOldUsers();
 
-	CreateTimer(0.3, Timer_Cache, _, TIMER_REPEAT);
+	if(useMaxThreads == 1) CreateTimer(0.1, Timer_Cache, _, TIMER_REPEAT);
+	else CreateTimer(0.3, Timer_Cache, _, TIMER_REPEAT);
 	CreateTimer(300.0, Timer_Top, _, TIMER_REPEAT);
 	if(immediateMode == 1) CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 
@@ -850,8 +851,8 @@ public OnConfigsExecuted()
 //called at start of plugin, sets everything up.
 public OnPluginStart()
 {
-	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "0", "Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
-	sm_simplecsgoranks_useMaxThreads = CreateConVar("sm_simplecsgoranks_useMaxThreads", "0", "Allows more threads than usual. Might be useful for servers with a large number of players.")
+	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "0", "(EXPERIMENTAL) Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
+	sm_simplecsgoranks_useMaxThreads = CreateConVar("sm_simplecsgoranks_useMaxThreads", "0", "(EXPERIMENTAL) Allows more threads than usual. Might be useful for servers with a large number of players.")
 
 	sm_simplecsgoranks_kill_points = CreateConVar("sm_simplecsgoranks_kill_points", "5", "The number of points gained per kill")
 	sm_simplecsgoranks_higher_rank_additional = CreateConVar("sm_simplecsgoranks_higher_rank_additional", "5", "Additional points gained when killing a higher ranked player.")
