@@ -79,6 +79,7 @@ public Plugin:myinfo =
 //sets a clients rank, checks if the client exists and then updates the rank, else it adds the user with a zero rank.
 public void setRank(int steamId, int rank, int client) //done
 {
+	if(rankCacheValidate[client] == 0) newUser(steamId); //adds the user if they are not in the database
 	rankCache[client] = rank;
 	rankCacheValidate[client] = 1; //revalidate once this is done
 
@@ -94,21 +95,15 @@ public void setRank(int steamId, int rank, int client) //done
 	Format(query, sizeof(query), "UPDATE steam SET rank = %s, age = '%s' WHERE steamId = %s LIMIT 1", srank, stime, ssteamId); //limited
 	if(printToServer == 1) PrintToServer("query: %s", query);	
 
-	newUser(steamId); //adds the user if they are not in the database
-	if (dbc == INVALID_HANDLE)
+
+	if (dbt == INVALID_HANDLE)
 	{
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
+		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+		SQL_GetError(dbt, errorc, sizeof(errorc));
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-	} 
-	else {
-		if (!SQL_FastQuery(dbc, query))
-		{
-			new String:error2[255]
-			SQL_GetError(dbc, error2, sizeof(error2))
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error2)
-		}
 	}
+	activeThreads++;
+	SQL_TQuery(dbt, noCallback, query, 0, DBPrio_Normal);
 }
 
 //adds the given number of points to the given user
@@ -170,31 +165,15 @@ public void newUser(int steamId) //done
 	if(printToServer == 1) PrintToServer("query: %s", query);
 	
 
-	
-	if( immediateMode == 0 )
+	if (dbt == INVALID_HANDLE)
 	{
-		if(dbc == INVALID_HANDLE){ 
-			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-			SQL_GetError(dbc, errorc, sizeof(errorc));
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-		}
-		if (!SQL_FastQuery(dbc, query))
-		{
-			new String:error[255]
-			SQL_GetError(dbc, error, sizeof(error))
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
-		}
+		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+		SQL_GetError(dbt, errorc, sizeof(errorc));
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
-	else{
-		if (dbt == INVALID_HANDLE)
-		{
-			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-			SQL_GetError(dbt, errorc, sizeof(errorc));
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-		}
-		activeThreads++;
-		SQL_TQuery(dbt, noCallback, query, 0, DBPrio_High);
-	}
+	activeThreads++;
+	SQL_TQuery(dbt, noCallback, query, 0, DBPrio_High);
+	
 
 	return;
 }
@@ -418,7 +397,7 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 //end Threaded
 
 //this is called whenever the rank command is used or another method needs to get a rank
-public int getRank(int steamId, int client)
+public int getRank(int steamId, int client) //fallback method
 {
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
@@ -645,7 +624,7 @@ public void updateName(int steamId, char name[64])
 	ReplaceString(name, sizeof(name), ";", "", false);
 	ReplaceString(name, sizeof(name), " OR ", "", false);
 	ReplaceString(name, sizeof(name), "join", "", false);
-	SQL_EscapeString(dbc, name, buffer, sizeof(buffer));
+	SQL_EscapeString(dbt, name, buffer, sizeof(buffer));
 	new String:query[700]; //surely enough for a long name?
 	Format(query, sizeof(query), "INSERT IGNORE INTO steamname (steamId,name) VALUES ('%d','\%s\') ON DUPLICATE KEY UPDATE name='\%s\'", steamId, buffer, buffer); //name changed to buffer
 	//make query
@@ -667,101 +646,93 @@ public void updateName(int steamId, char name[64])
 //Copies out the array at the end of the round
 public void copyOut()
 {
-	//check if DB is connected. If not reconnect.
-	if(dbc == INVALID_HANDLE){ 
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		SQL_GetError(dbc, errorc, sizeof(errorc));
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-	}
-	else {	
-		decl String:steamId1[64]; //shooter
-		decl String:steamId4[64]; //assister
-		decl String:steamId2[64]; //got shot
+	decl String:steamId1[64]; //shooter
+	decl String:steamId4[64]; //assister
+	decl String:steamId2[64]; //got shot
 
-		decl String:name1[64]; //shooter
-		decl String:name4[64]; //assister
-		decl String:name2[64]; //got shot
+	decl String:name1[64]; //shooter
+	decl String:name4[64]; //assister
+	decl String:name2[64]; //got shot
 
-		decl client;
-		decl client2;
-		decl client3;
-		//new
-		decl String:name3[64]; //defused the bomb
-		decl String:steamId3[64]; //defused the bomb
-		
-		if(defuser != -1)
-		{	
-			if(IsClientConnected(defuser)) // Removed  && !IsFakeClient(defuser)
-			{
-				GetClientName(defuser, name3, sizeof(name3)); //got shot
-				GetClientAuthId(defuser, AuthId_Steam3, steamId3, sizeof(steamId3));
-				ReplaceString(steamId3, sizeof(steamId3), "[U:1:", "", false);
-				ReplaceString(steamId3, sizeof(steamId3), "[U:0:", "", false);
-				ReplaceString(steamId3, sizeof(steamId3), "]", "", false);
-				PrintToChatAll("%s has defused the bomb! +5 rank!", name3);
-				addRank(StringToInt(steamId3), 5, defuser);		
-			}
-			defuser = -1; //ready the variable for the next round
-		}
-		//new
-		shotCountdown = 0
-		if(printToServer == 1) PrintToServer("%d players were killed this round.", shotPlayers+1);
-		while(shotCountdown <= shotPlayers )//while(shotPlayers > -1) //only happens if kills occur during a round, else it skips
+	decl client;
+	decl client2;
+	decl client3;
+	//new
+	decl String:name3[64]; //defused the bomb
+	decl String:steamId3[64]; //defused the bomb
+	
+	if(defuser != -1)
+	{	
+		if(IsClientConnected(defuser)) // Removed  && !IsFakeClient(defuser)
 		{
-			client = shooter[shotCountdown];
-			client2 = shot[shotCountdown];
-			client3 = assister[shotCountdown];
-			
-			//check if they are connected
-			if(IsClientConnected(client) && IsClientConnected(client2)) //removed && !IsFakeClient(client) && !IsFakeClient(client2)
-			{
-				if(printToServer == 1) PrintToServer("Killer:client:%d  Killed:client2:%d", client, client2);
-				GetClientAuthId(client, AuthId_Steam3, steamId1, sizeof(steamId1));
-				GetClientAuthId(client2, AuthId_Steam3, steamId2, sizeof(steamId2));
-			
-				ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
-				ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
-				ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
-				ReplaceString(steamId2, sizeof(steamId2), "[U:1:", "", false);
-				ReplaceString(steamId2, sizeof(steamId2), "[U:0:", "", false);
-				ReplaceString(steamId2, sizeof(steamId2), "]", "", false);
-				if(printToServer == 1) PrintToServer("Killer:SteamId1:%s  Killed:SteamId2:%s", steamId1, steamId2);
-
-				userShot(StringToInt(steamId1),StringToInt(steamId2), client, client2); //adds to first, takes from second
-
-				//print out info
-				GetClientName(client, name1, sizeof(name1)); //shooter
-				GetClientName(client2, name2, sizeof(name2)); //got shot
-				CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
-				updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
-				updateName(StringToInt(steamId2), name2);
-
-				
-				
-			}
-			else{
-				CPrintToChatAll("{green}Kill #%d Player Left.", (shotCountdown+1) );
-			}
-			//Assister
-			if(client3 > 0){
-				if(IsClientConnected(client3)) //&& !IsFakeClient(client3)
-				{
-					GetClientAuthId(client3, AuthId_Steam3, steamId4, sizeof(steamId4));
-					ReplaceString(steamId4, sizeof(steamId4), "[U:1:", "", false);
-					ReplaceString(steamId4, sizeof(steamId4), "[U:0:", "", false);
-					ReplaceString(steamId4, sizeof(steamId4), "]", "", false);
-					GetClientName(client3, name4, sizeof(name4));
-					
-					//add +2 for assist
-					addRank(StringToInt(steamId4), 2, client3);
-					
-					CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
-				}
-			}
-			shotCountdown++;
+			GetClientName(defuser, name3, sizeof(name3)); //got shot
+			GetClientAuthId(defuser, AuthId_Steam3, steamId3, sizeof(steamId3));
+			ReplaceString(steamId3, sizeof(steamId3), "[U:1:", "", false);
+			ReplaceString(steamId3, sizeof(steamId3), "[U:0:", "", false);
+			ReplaceString(steamId3, sizeof(steamId3), "]", "", false);
+			PrintToChatAll("%s has defused the bomb! +5 rank!", name3);
+			addRank(StringToInt(steamId3), 5, defuser);		
 		}
-		shotPlayers = -1;
+		defuser = -1; //ready the variable for the next round
 	}
+	//new
+	shotCountdown = 0
+	if(printToServer == 1) PrintToServer("%d players were killed this round.", shotPlayers+1);
+	while(shotCountdown <= shotPlayers )//while(shotPlayers > -1) //only happens if kills occur during a round, else it skips
+	{
+		client = shooter[shotCountdown];
+		client2 = shot[shotCountdown];
+		client3 = assister[shotCountdown];
+		
+		//check if they are connected
+		if(IsClientConnected(client) && IsClientConnected(client2)) //removed && !IsFakeClient(client) && !IsFakeClient(client2)
+		{
+			if(printToServer == 1) PrintToServer("Killer:client:%d  Killed:client2:%d", client, client2);
+			GetClientAuthId(client, AuthId_Steam3, steamId1, sizeof(steamId1));
+			GetClientAuthId(client2, AuthId_Steam3, steamId2, sizeof(steamId2));
+		
+			ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
+			ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
+			ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
+			ReplaceString(steamId2, sizeof(steamId2), "[U:1:", "", false);
+			ReplaceString(steamId2, sizeof(steamId2), "[U:0:", "", false);
+			ReplaceString(steamId2, sizeof(steamId2), "]", "", false);
+			if(printToServer == 1) PrintToServer("Killer:SteamId1:%s  Killed:SteamId2:%s", steamId1, steamId2);
+
+			userShot(StringToInt(steamId1),StringToInt(steamId2), client, client2); //adds to first, takes from second
+
+			//print out info
+			GetClientName(client, name1, sizeof(name1)); //shooter
+			GetClientName(client2, name2, sizeof(name2)); //got shot
+			CPrintToChatAll("{green}Kill #%d {darkred}%s (%d) {green}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+			updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
+			updateName(StringToInt(steamId2), name2);
+
+			
+			
+		}
+		else{
+			CPrintToChatAll("{green}Kill #%d Player Left.", (shotCountdown+1) );
+		}
+		//Assister
+		if(client3 > 0){
+			if(IsClientConnected(client3)) //&& !IsFakeClient(client3)
+			{
+				GetClientAuthId(client3, AuthId_Steam3, steamId4, sizeof(steamId4));
+				ReplaceString(steamId4, sizeof(steamId4), "[U:1:", "", false);
+				ReplaceString(steamId4, sizeof(steamId4), "[U:0:", "", false);
+				ReplaceString(steamId4, sizeof(steamId4), "]", "", false);
+				GetClientName(client3, name4, sizeof(name4));
+				
+				//add +2 for assist
+				addRank(StringToInt(steamId4), 2, client3);
+				
+				CPrintToChatAll("{darkred}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
+			}
+		}
+		shotCountdown++;
+	}
+	shotPlayers = -1;
 	return;
 
 }
@@ -952,6 +923,8 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 		databaseCheck = databaseName;
 		CloseHandle(dbc);
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+		CloseHandle(dbt);
+		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 	}
 	if(GetDebugConvar() == 1) printToServer = 1;
 	else if(GetDebugConvar() == 0) printToServer = 0;
@@ -1024,46 +997,14 @@ public void getTop()
 
 	if(printToServer == 1) PrintToServer("query: %s", query);
 
-	if( immediateMode == 1 )
+	if (dbt == INVALID_HANDLE)
 	{
-		if (dbt == INVALID_HANDLE)
-		{
-			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-			SQL_GetError(dbt, errorc, sizeof(errorc));
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-		}
-		activeThreads++;
-		SQL_TQuery(dbt, topThread, query, 0, DBPrio_Low);
+		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+		SQL_GetError(dbt, errorc, sizeof(errorc));
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
-	else {
-		
-		if(dbc == INVALID_HANDLE){ 
-			dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-			SQL_GetError(dbc, errorc, sizeof(errorc));
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
-		}
-	
-		new Handle:query2 = SQL_Query(dbc, query);
-		if (query2 == INVALID_HANDLE)
-		{
-			new String:error[255]
-			SQL_GetError(dbc, error, sizeof(error))
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error)
-		} else {
-			new String:topTemp[128];
-			int z = 0;
-			while (SQL_FetchRow(query2) && z < 25)
-			{
-				SQL_FetchString(query2, 0, topTemp, sizeof(topTemp));
-				if(printToServer == 1) PrintToServer("Getting top player:%s", topTemp);
-				strcopy(topRanks[z], 128, topTemp);
-				z++;
-			}
-		
-			
-		}
-		CloseHandle(query2);
-	}
+	activeThreads++;
+	SQL_TQuery(dbt, topThread, query, 0, DBPrio_Low);
 }
 
 //only allow when alive so that the variable has the correct information && IsPlayerAlive(i)
