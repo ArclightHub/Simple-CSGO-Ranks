@@ -2,6 +2,10 @@
 All queries should now operate in threads apart from the fallback method and the DB cleaning. This means that the updates should be almost instant if there are no cache faults.
 Removed some branching code.
 Added new convars to limit the rate of thread creation for slow servers.
+This version has been tested for sourcemod 1.8.0
+New console Variables:
+sm_simplecsgoranks_ffa: Enables free for all mode.
+sm_simplecsgoranks_useSlowCache: Limit the rate at which the cache updates its data. 
 
 0.2.2: Added deathmatch/immediate mode.
 Added forked server config support.

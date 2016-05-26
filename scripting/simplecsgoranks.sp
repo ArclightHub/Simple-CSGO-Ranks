@@ -34,6 +34,7 @@ int activeThreads = 0;
 int useSlowCache = 1;
 //int printThreadToServer = 1;
 
+int gameType = 0;
 int ranksText[320];
 new String:databaseName[128] = "default";
 new String:databaseNew[128] = "default";
@@ -46,6 +47,7 @@ int shot[255];
 
 //convars
 ConVar sm_simplecsgoranks_mode;
+ConVar sm_simplecsgoranks_ffa;
 ConVar sm_simplecsgoranks_useMaxThreads;
 ConVar sm_simplecsgoranks_useSlowCache;
 
@@ -639,7 +641,7 @@ public void updateName(int steamId, char name[64])
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	activeThreads++;
-	SQL_TQuery(dbt, noCallback, query, 0, DBPrio_Normal);
+	SQL_TQuery(dbt, noCallback, query, 0, DBPrio_Low);
 
 }
 
@@ -739,6 +741,12 @@ public void copyOut()
 
 //steam stuff
 
+public int GetFFAConvar()
+{
+	char buffer[128]
+	sm_simplecsgoranks_ffa.GetString(buffer, 128)
+	return (StringToInt(buffer) ? StringToInt(buffer) : 0 );
+}
 public int GetUseSlowCacheConvar()
 {
 	char buffer[128]
@@ -799,13 +807,15 @@ public int GetCleaningConvar()
 
 public Action:Timer_Verify(Handle:timer)
 {
-	PrintToServer("sm_simplecsgoranks_useSlowCache %d",useSlowCache);
-	PrintToServer("sm_simplecsgoranks_useMaxThreads %d",useMaxThreads);
-	PrintToServer("sm_simplecsgoranks_mode %d",immediateMode);
-	PrintToServer("sm_simplecsgoranks_higher_rank_gap %d",higherRankThreshold);
-	PrintToServer("sm_simplecsgoranks_higher_rank_additional %d",higherRankFactor);
-	PrintToServer("sm_simplecsgoranks_kill_points %d",killPoints);
-	PrintToServer("sm_simplecsgoranks_cleaning %d",dbCleaning);
+
+	PrintToServer("sm_simplecsgoranks_ffa %d", gameType);
+	PrintToServer("sm_simplecsgoranks_useSlowCache %d", useSlowCache);
+	PrintToServer("sm_simplecsgoranks_useMaxThreads %d", useMaxThreads);
+	PrintToServer("sm_simplecsgoranks_mode %d", immediateMode);
+	PrintToServer("sm_simplecsgoranks_higher_rank_gap %d", higherRankThreshold);
+	PrintToServer("sm_simplecsgoranks_higher_rank_additional %d", higherRankFactor);
+	PrintToServer("sm_simplecsgoranks_kill_points %d", killPoints);
+	PrintToServer("sm_simplecsgoranks_cleaning %d", dbCleaning);
 	if( dbCleaning > -1) purgeOldUsers();
 
 	if(useMaxThreads == 1) CreateTimer(0.1, Timer_Cache, _, TIMER_REPEAT);
@@ -818,6 +828,8 @@ public Action:Timer_Verify(Handle:timer)
 
 public OnConfigsExecuted()
 {
+
+	if(GetFFAConvar()) gameType = GetFFAConvar();
 	if(GetUseMaxThreadsConvar()) useMaxThreads = GetUseMaxThreadsConvar();
 	if(GetUseSlowCacheConvar()) useSlowCache = GetUseSlowCacheConvar();
 	if(GetModeConvar()) immediateMode = GetModeConvar();
@@ -834,6 +846,7 @@ public OnConfigsExecuted()
 //called at start of plugin, sets everything up.
 public OnPluginStart()
 {
+	sm_simplecsgoranks_ffa =  CreateConVar("sm_simplecsgoranks_ffa", "0", "Enables free for all mode.")
 	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "0", "(EXPERIMENTAL) Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
 	sm_simplecsgoranks_useMaxThreads = CreateConVar("sm_simplecsgoranks_useMaxThreads", "0", "(EXPERIMENTAL) Allows more threads than usual. Might be useful for servers with a large number of players.")
 	sm_simplecsgoranks_useSlowCache = CreateConVar("sm_simplecsgoranks_useSlowCache", "1", "Limit the rate at which the cache updates its data.")
@@ -858,7 +871,7 @@ public OnPluginStart()
 	sm_simplecsgoranks_mode.Flags = flags;
 	sm_simplecsgoranks_useMaxThreads.Flags = flags;
 	sm_simplecsgoranks_useSlowCache.Flags = flags;
-
+	sm_simplecsgoranks_ffa.Flags = flags;
 
 	
 
@@ -959,20 +972,22 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 	int attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
 	int assist = GetClientOfUserId(GetEventInt(event, "assister"));
 	int userId = GetClientOfUserId(GetEventInt(event, "userid"));
+	if(!IsClientInGame(attacker) || !IsClientInGame(userId)) return Plugin_Continue;
 	if(!ready || IsFakeClient(attacker) || IsFakeClient(userId)) return Plugin_Continue;
 	if(userId == 0 ||  attacker == 0) return Plugin_Continue; //fix
 	if(shotPlayers < 0) shotPlayers = 0; //out of range check //This happens on the first kill of each round. If no kills occur in a round this prevents it from crashing. its essential
 	
 	if( immediateMode == 1 ) {
 		
-		if(GetClientTeam(userId) != GetClientTeam(attacker)) userShot(getSteamIdNumber(attacker),getSteamIdNumber(userId), attacker, userId);
+		if(gameType == 1 || GetClientTeam(userId) != GetClientTeam(attacker)) userShot(getSteamIdNumber(attacker),getSteamIdNumber(userId), attacker, userId);
 		return Plugin_Continue;
 	}
 	
 	if(shotPlayers > 254) {
 	copyOut(); //if the buffer fills because you use a dumb addon that allows more than 32 players per team dont let it crash
 	}
-	if(GetClientTeam(userId) != GetClientTeam(attacker))
+
+	if(gameType == 1 || GetClientTeam(userId) != GetClientTeam(attacker))
 	{	
 		shooter[shotPlayers] = attacker; //the shooter
 		assister[shotPlayers] = assist; //the assister
@@ -1015,14 +1030,16 @@ public updateRanksText(){
 	for(new i=1; i <= maxclients; i++)
 	{
 		ranksText[i] = 0;
-		if(IsClientInGame(i) && !IsFakeClient(i)) 
-		{
-			GetClientAuthId(i, AuthId_Steam3, steamId1, sizeof(steamId1));
-			ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
-			ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
-			ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
-			ranksText[i] = getRankCached(StringToInt(steamId1), 1, i, 0);
-			getRank2(StringToInt(steamId1), i);
+		if(IsClientInGame(i)){
+			if(!IsFakeClient(i)) 
+			{
+				GetClientAuthId(i, AuthId_Steam3, steamId1, sizeof(steamId1));
+				ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
+				ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
+				ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
+				ranksText[i] = getRankCached(StringToInt(steamId1), 1, i, 0);
+				getRank2(StringToInt(steamId1), i);
+			}
 		}
 	}
 }
