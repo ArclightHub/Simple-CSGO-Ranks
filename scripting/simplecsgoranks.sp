@@ -31,6 +31,7 @@ int cacheCurrentClient = 1;
 int immediateMode = 0; //Use immediate thread instead of slow round method. Good for Deathmatch
 int useMaxThreads = 0; //Use the maximum safe number of threads at once. Experimental
 int activeThreads = 0;
+int useSlowCache = 0;
 //int printThreadToServer = 1;
 
 int ranksText[320];
@@ -46,6 +47,7 @@ int shot[255];
 //convars
 ConVar sm_simplecsgoranks_mode;
 ConVar sm_simplecsgoranks_useMaxThreads;
+ConVar sm_simplecsgoranks_useSlowCache;
 
 ConVar sm_simplecsgoranks_kill_points;
 ConVar sm_simplecsgoranks_higher_rank_additional;
@@ -765,6 +767,13 @@ public void copyOut()
 }
 
 //steam stuff
+
+public int GetUseSlowCacheConvar()
+{
+	char buffer[128]
+	sm_simplecsgoranks_useSlowCache.GetString(buffer, 128)
+	return (StringToInt(buffer) ? StringToInt(buffer) : 0 );
+}
 public int GetUseMaxThreadsConvar()
 {
 	char buffer[128]
@@ -819,6 +828,7 @@ public int GetCleaningConvar()
 
 public Action:Timer_Verify(Handle:timer)
 {
+	PrintToServer("sm_simplecsgoranks_useSlowCache %d",useSlowCache);
 	PrintToServer("sm_simplecsgoranks_useMaxThreads %d",useMaxThreads);
 	PrintToServer("sm_simplecsgoranks_mode %d",immediateMode);
 	PrintToServer("sm_simplecsgoranks_higher_rank_gap %d",higherRankThreshold);
@@ -828,7 +838,8 @@ public Action:Timer_Verify(Handle:timer)
 	if( dbCleaning > -1) purgeOldUsers();
 
 	if(useMaxThreads == 1) CreateTimer(0.1, Timer_Cache, _, TIMER_REPEAT);
-	else CreateTimer(0.3, Timer_Cache, _, TIMER_REPEAT);
+	else if(useSlowCache == 0) CreateTimer(0.3, Timer_Cache, _, TIMER_REPEAT);
+	else CreateTimer(4.0, Timer_Cache, _, TIMER_REPEAT);
 	CreateTimer(300.0, Timer_Top, _, TIMER_REPEAT);
 	if(immediateMode == 1) CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 
@@ -853,6 +864,8 @@ public OnPluginStart()
 {
 	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "0", "(EXPERIMENTAL) Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
 	sm_simplecsgoranks_useMaxThreads = CreateConVar("sm_simplecsgoranks_useMaxThreads", "0", "(EXPERIMENTAL) Allows more threads than usual. Might be useful for servers with a large number of players.")
+	sm_simplecsgoranks_useSlowCache = CreateConVar("sm_simplecsgoranks_useSlowCache", "0", "Limit the rate at which the cache updates its data.")
+
 
 	sm_simplecsgoranks_kill_points = CreateConVar("sm_simplecsgoranks_kill_points", "5", "The number of points gained per kill")
 	sm_simplecsgoranks_higher_rank_additional = CreateConVar("sm_simplecsgoranks_higher_rank_additional", "5", "Additional points gained when killing a higher ranked player.")
@@ -872,6 +885,9 @@ public OnPluginStart()
 	sm_simplecsgoranks_higher_rank_gap.Flags = flags;
 	sm_simplecsgoranks_mode.Flags = flags;
 	sm_simplecsgoranks_useMaxThreads.Flags = flags;
+	sm_simplecsgoranks_useSlowCache.Flags = flags;
+
+
 	
 
 	decl String:server[255];
