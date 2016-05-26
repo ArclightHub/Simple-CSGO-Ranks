@@ -1,12 +1,9 @@
 #include <dbi>
 #include <sourcemod> 
 #include <cstrike>
-//#include <clientprefs>
-//#include <sdktools>
-//#include <multicolors>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.3Dev"
+#define PLUGIN_VERSION "0.2.3"
 
 //Global Variables, do NOT touch.
 bool ready = false;
@@ -69,7 +66,7 @@ int dbCleaning = 0;
 public Plugin:myinfo =
 {
 	name = "SimpleCSGORanks",
-	author = "Puppetmaster, Mehffort, Zipzip, Turtl, Fnz, Furreal",
+	author = "Puppetmaster, Mehffort, Zipzip, Turtl, Fnz, Furreal, Nova",
 	description = "SimpleCSGORanks Addon",
 	version = PLUGIN_VERSION,
 	url = "https://www.gamingzoneservers.com"
@@ -515,7 +512,7 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 		GetClientName(client, name1, sizeof(name1)); //shooter
 		GetClientName(client2, name2, sizeof(name2)); //got shot
 		
-		Client_PrintToChatAll(false,"{R}%s (%d) {G}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
+		Client_PrintToChatAll(false,"{B}%s (%d) {G}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
 		
 		if (dbt == INVALID_HANDLE)
 		{
@@ -702,7 +699,7 @@ public void copyOut()
 			//print out info
 			GetClientName(client, name1, sizeof(name1)); //shooter
 			GetClientName(client2, name2, sizeof(name2)); //got shot
-			Client_PrintToChatAll(false, "{G}Kill #%d {R}%s (%d) {G}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+			Client_PrintToChatAll(false, "{G}Kill #%d {B}%s (%d) {G}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
 			updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
 			updateName(StringToInt(steamId2), name2);
 
@@ -725,7 +722,7 @@ public void copyOut()
 				//add +2 for assist
 				addRank(StringToInt(steamId4), 2, client3);
 				
-				Client_PrintToChatAll(false, "{R}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
+				Client_PrintToChatAll(false, "{B}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
 			}
 		}
 		shotCountdown++;
@@ -944,9 +941,9 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 	copyTime = GetEngineTime();
 	while(shotPlayers > -1 || defuser != -1){
 	shotPlayers--;
-	if(shotPlayers > -1)Client_PrintToChatAll(false, "{R}----Round Over----");//PrintToChatAll("----Round Over----"); //PLUGIN_VERSION
+	if(shotPlayers > -1)Client_PrintToChatAll(false, "{B}----Round Over----");//PrintToChatAll("----Round Over----"); //PLUGIN_VERSION
 	if(shotPlayers > -1)Client_PrintToChatAll(false, "{G}SimpleCSGORanks v%s", PLUGIN_VERSION);
-	if(shotPlayers > -1)Client_PrintToChatAll(false, "{R}Calculating kills and ranks.");//PrintToChatAll("Pausing game: Calculating kills and ranks.");
+	if(shotPlayers > -1)Client_PrintToChatAll(false, "{B}Calculating kills and ranks.");//PrintToChatAll("Pausing game: Calculating kills and ranks.");
 	copyOut();
 	
 	Client_PrintToChatAll(false, "{G} -- New Round --");
@@ -1005,7 +1002,7 @@ public OnMapStart ()
 public void getTop()
 {
 	new String:query[256];
-	query = "select concat(\"{R}\", stn.name,\"{B} - {G}\",a.rank) from (select * from steam order by cast(rank as decimal) desc limit 25) a join steamname stn on stn.steamId = a.steamId limit 25";
+	query = "select concat(\"{B}\", stn.name,\"{B} - {G}\",a.rank) from (select * from steam order by cast(rank as decimal) desc limit 25) a join steamname stn on stn.steamId = a.steamId limit 25";
 
 	if(printToServer == 1) PrintToServer("query: %s", query);
 
@@ -1046,7 +1043,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 	for (int i = 0; i < sizeof(ranksChatCommands); i++) {
 	if (strcmp(args[0], ranksChatCommands[i], false) == 0) {
 			GetClientName(client, name, sizeof(name));
-			Client_PrintToChatAll(false, "{G}%s's {R}Score: %d | Rank: %s", name, ranksText[client],ranksText2[client]); //Use this to change the !ranks text
+			Client_PrintToChatAll(false, "{G}%s's {B}Score: %d | Rank: %s", name, ranksText[client],ranksText2[client]); //Use this to change the !ranks text
 		}
 	}
 	if( (strcmp(args[0], "!top10", false) == 0) || (strcmp(args[0], "!top", false) == 0) || (strcmp(args[0], "top", false) == 0) ){
