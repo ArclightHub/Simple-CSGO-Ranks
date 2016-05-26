@@ -31,7 +31,7 @@ int cacheCurrentClient = 1;
 int immediateMode = 0; //Use immediate thread instead of slow round method. Good for Deathmatch
 int useMaxThreads = 0; //Use the maximum safe number of threads at once. Experimental
 int activeThreads = 0;
-int useSlowCache = 0;
+int useSlowCache = 1;
 //int printThreadToServer = 1;
 
 int ranksText[320];
@@ -864,7 +864,7 @@ public OnPluginStart()
 {
 	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "0", "(EXPERIMENTAL) Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
 	sm_simplecsgoranks_useMaxThreads = CreateConVar("sm_simplecsgoranks_useMaxThreads", "0", "(EXPERIMENTAL) Allows more threads than usual. Might be useful for servers with a large number of players.")
-	sm_simplecsgoranks_useSlowCache = CreateConVar("sm_simplecsgoranks_useSlowCache", "0", "Limit the rate at which the cache updates its data.")
+	sm_simplecsgoranks_useSlowCache = CreateConVar("sm_simplecsgoranks_useSlowCache", "1", "Limit the rate at which the cache updates its data.")
 
 
 	sm_simplecsgoranks_kill_points = CreateConVar("sm_simplecsgoranks_kill_points", "5", "The number of points gained per kill")
