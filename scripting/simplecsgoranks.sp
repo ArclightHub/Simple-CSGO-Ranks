@@ -819,6 +819,7 @@ public Action:Timer_Verify(Handle:timer)
 public OnConfigsExecuted()
 {
 	if(GetUseMaxThreadsConvar()) useMaxThreads = GetUseMaxThreadsConvar();
+	if(GetUseSlowCacheConvar()) useSlowCache = GetUseSlowCacheConvar();
 	if(GetModeConvar()) immediateMode = GetModeConvar();
 
 	if(GetHigherRankGapConvar()) higherRankThreshold = GetHigherRankGapConvar();
