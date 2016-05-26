@@ -55,12 +55,6 @@ Additionally there are five advanced console variables:
 <li>sm_simplecsgoranks_debug<ul><li>Enable or disable advanced error messages. (0 or 1)</li></ul></li>
 </ul>
 
-You may also want an updated version of the includes: "[INC] Multi Colors" from https://forums.alliedmods.net/showthread.php?t=247770
-The ranking data is able to be displayed on the server MOTD.
-Currently this addon is running on our servers.
-If you wish to try the addon before you download it please feel free to join the server.
-IP: gamingzoneservers.com
-
 <b>MySQL setup on Windows:</b><br><br>
 Many people have had trouble setting up MySQL and adding the databases on windows. Below you will find information for setting up MySQL:
 <ul>
