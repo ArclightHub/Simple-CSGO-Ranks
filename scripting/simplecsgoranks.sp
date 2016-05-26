@@ -239,8 +239,6 @@ public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:cli
 		{
 			new String:data[65];
 			SQL_FetchString(HQuery, 0, data, sizeof(data))
-			decl String:name[64];
-			GetClientName(client, name, sizeof(name));
 			ranksText2[client] = data;
 		}
 	}
