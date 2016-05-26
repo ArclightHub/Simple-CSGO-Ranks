@@ -1,4 +1,10 @@
+0.2.3:
+All queries should now operate in threads apart from the fallback method and the DB cleaning. This means that the updates should be almost instant if there are no cache faults.
+Removed some branching code.
+Added new convars to limit the rate of thread creation for slow servers.
+
 0.2.2: Added deathmatch/immediate mode.
+Added forked server config support.
 Added additional methods for threaded queries. Should be VERY fast now.
 New console Variables:
 sm_simplecsgoranks_mode: Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.
