@@ -3,7 +3,7 @@
 #include <cstrike>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.3"
+#define PLUGIN_VERSION "0.2.4DEV"
 
 //Global Variables, do NOT touch.
 bool ready = false;
@@ -75,9 +75,6 @@ public Plugin:myinfo =
 //sets a clients rank, checks if the client exists and then updates the rank, else it adds the user with a zero rank.
 public void setRank(int steamId, int rank, int client) //done
 {
-	if(rankCacheValidate[client] == 0) newUser(steamId); //adds the user if they are not in the database
-	rankCache[client] = rank;
-	rankCacheValidate[client] = 1; //revalidate once this is done
 
 	//time
 	new String:stime[65];
@@ -188,11 +185,13 @@ public int getSteamIdNumber(int client)
 
 public OnClientPostAdminCheck(client){
 	rankCacheValidate[client] = 0;
+	newUser(getSteamIdNumber(client)); //do this on connect instead
 	cacheCurrentClient = client; //attempt to cache a player immediately after they join
 	return;
 }
 
 public OnClientDisconnect(client){
+	setRank(getSteamIdNumber(client), (getRankCached(getSteamIdNumber(client), 0, 0, 0)), client); //fallback write out at end
 	rankCacheValidate[client] = 0;
 	return;
 }
@@ -211,18 +210,11 @@ public topThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 		{
 			SQL_FetchString(HQuery, 0, topTemp, sizeof(topTemp));
 			if(printToServer == 1) PrintToServer("Getting top player:%s", topTemp);
-			//Format(topRanks[z][], sizeof(sizeOfChar)*128, "%s", topTemp);
 			strcopy(topRanks[z], 128, topTemp);
 			z++;
 		}
 	}
 	activeThreads--;
-
-	/*if(printThreadToServer == 1 && activeThreads > 0) {
-		PrintToServer("Top data updated by thread.");
-		PrintToServer("Active Threads: %d", activeThreads);
-	}*/
-
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -240,10 +232,6 @@ public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:cli
 		}
 	}
 	activeThreads--;
-	/*if(printThreadToServer == 1 && activeThreads > 0) {
-		PrintToServer("Position data updated by thread.");
-		PrintToServer("Active Threads: %d", activeThreads);
-	}*/
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -271,10 +259,6 @@ public cacheThread(Handle:owner, Handle:HQuery, const String:error[], any:client
 		}
 	}
 	activeThreads--;
-	/*if(printThreadToServer == 1 && activeThreads > 0) {
-		PrintToServer("Cache data updated by thread.");
-		PrintToServer("Active Threads: %d", activeThreads);
-	}*/
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
 
@@ -437,8 +421,6 @@ public int getRank(int steamId, int client) //fallback method
 //players position overall
 public getRank2(int steamId, int i)
 {
-
-	newUser(steamId);
 	new String:ssteamId[65];
 	IntToString(steamId,ssteamId,sizeof(ssteamId));
 	new String:query[400];
@@ -520,8 +502,6 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 			SQL_GetError(dbt, errorc, sizeof(errorc));
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
-		if(rankCacheValidate[client] == 0) newUser(steamId1);
-		if(rankCacheValidate[client2] == 0) newUser(steamId2);
 		activeThreads++;
 		SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
 		activeThreads++;
