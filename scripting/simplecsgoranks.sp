@@ -77,7 +77,7 @@ public Plugin:myinfo =
 //sets a clients rank, checks if the client exists and then updates the rank, else it adds the user with a zero rank.
 public void setRank(int steamId, int rank, int client) //done
 {
-
+	newUser(steamId);
 	//time
 	new String:stime[65];
 	IntToString(GetTime(),stime,sizeof(stime));
@@ -148,6 +148,7 @@ public void purgeOldUsers()
 //this gets run whenever a new user joins the server and is authenticated
 public void newUser(int steamId) //done
 {
+	PrintToServer("New User: %d", steamId);
 	new String:ssteamId[65];
 	new String:srank[65];
 	new String:stime[65];
@@ -344,7 +345,9 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 //needs all entered, if it fails to lookup from just client it falls back to the existing method
 //getRankCached(id, usesclient, client, invalidateCache)
 	int currentClient = -1;
-	if(usesClient == 1) currentClient = client;
+	if(usesClient == 1){ 
+		currentClient = client;
+	}
 	else //Need to look up the client from the array
 	{
 		new maxclients = GetMaxClients()
@@ -357,6 +360,7 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 			}
 		}
 	}
+	
 	if(currentClient == -1) {
 		if(usesClient == 1) return getRank(steamId , client);
 		else return getRank(steamId , -1); //failed to look up client
@@ -377,6 +381,7 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 //this is called whenever the rank command is used or another method needs to get a rank
 public int getRank(int steamId, int client) //fallback method
 {
+	newUser(steamId);
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
@@ -408,15 +413,10 @@ public int getRank(int steamId, int client) //fallback method
 			rank = StringToInt(name);
 					
 			if(client > 0){
-				if(rank == 0){
-					newUser(steamId);
-					rankCache[client] = -1;
-					rankCacheValidate[client] = 1;
-				}
-				else {
-					rankCache[client] = rank;
-					rankCacheValidate[client] = 1;
-				}
+
+				rankCache[client] = rank;
+				rankCacheValidate[client] = 1;
+
 			}
 		}
 	}
