@@ -494,7 +494,8 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 		GetClientName(client, name1, sizeof(name1)); //shooter
 		GetClientName(client2, name2, sizeof(name2)); //got shot
 		
-		Client_PrintToChatAll(false,"{B}%s (%d) {G}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
+		if(GetClientTeam(client) == 3) Client_PrintToChatAll(false,"{B}%s (%d) {G}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
+		else Client_PrintToChatAll(false,"{R}%s (%d) {R}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
 		
 		if (dbt == INVALID_HANDLE)
 		{
@@ -679,7 +680,10 @@ public void copyOut()
 			//print out info
 			GetClientName(client, name1, sizeof(name1)); //shooter
 			GetClientName(client2, name2, sizeof(name2)); //got shot
-			Client_PrintToChatAll(false, "{G}Kill #%d {B}%s (%d) {G}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+			
+			if(GetClientTeam(client) == 3) Client_PrintToChatAll(false, "{G}Kill #%d {B}%s (%d) {G}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+			else Client_PrintToChatAll(false, "{R}Kill #%d {R}%s (%d) {G}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+				
 			updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
 			updateName(StringToInt(steamId2), name2);
 
