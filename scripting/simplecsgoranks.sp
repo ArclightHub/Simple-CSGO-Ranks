@@ -707,7 +707,7 @@ public void copyOut()
 		}
 		else{
 			//one of them disconnected.
-			userShot(ids[client], ids[client2] ,0, 0);
+			userShot(ids[client], ids[client2] , client, client2);
 			Client_PrintToChatAll(false, "{O}Kill #%d %s Killed %s. Player Left.", (shotCountdown+1), idsNames[client], idsNames[client2] );
 		}
 		//Assister
