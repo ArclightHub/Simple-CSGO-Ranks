@@ -26,7 +26,6 @@ int immediateMode = 0; //Use immediate thread instead of slow round method. Good
 int useMaxThreads = 0; //Use the maximum safe number of threads at once. Experimental
 int activeThreads = 0;
 int useSlowCache = 1;
-//int printThreadToServer = 1;
 
 int gameType = 0;
 int ranksText[320];
@@ -96,7 +95,7 @@ public void setRank(int steamId, int rank, int client) //done
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 	}
 	activeThreads++;
-	SQL_TQuery(dbt, noCallback, query, 0, DBPrio_Normal);
+	SQL_TQuery(dbt, noCallback, query, 0, DBPrio_High);
 }
 
 //adds the given number of points to the given user
@@ -191,17 +190,17 @@ public OnClientPostAdminCheck(client){
 }
 
 public OnClientDisconnect(client){
-	setRank(getSteamIdNumber(client), (getRankCached(getSteamIdNumber(client), 0, 0, 0)), client); //fallback write out at end
+	setRank(getSteamIdNumber(client), (getRankCached(getSteamIdNumber(client), 0, 0, 0)), client); //fallback write out at end, sometimes the threaded queries fail so this should help.
 	rankCacheValidate[client] = 0;
 	return;
 }
 
 //Threaded code
-
+//Try not to access global vars in threads....
 public topThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
-		PrintToServer("Top Thread Query failed! %s", error);
+		//if(printToServer == 1) PrintToServer("Top Thread Query failed! %s", error);
 	}
 	else{
 		new String:topTemp[128];
@@ -221,7 +220,7 @@ public topThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
-		PrintToServer("Position Thread Query failed! %s", error);
+		//if(printToServer == 1) PrintToServer("Position Thread Query failed! %s", error);
 	}
 	else{
 		if(SQL_FetchRow(HQuery))
@@ -238,7 +237,7 @@ public positionThread(Handle:owner, Handle:HQuery, const String:error[], any:cli
 public updateThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
-		PrintToServer("Update Thread Query failed! %s", error);
+		//if(printToServer == 1) PrintToServer("Update Thread Query failed! %s", error);
 	}
 	activeThreads--;
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
@@ -247,7 +246,7 @@ public updateThread(Handle:owner, Handle:HQuery, const String:error[], any:clien
 public cacheThread(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
 	if(HQuery == INVALID_HANDLE){
-		PrintToServer("Cache Thread Query failed! %s", error);
+		//if(printToServer == 1) PrintToServer("Cache Thread Query failed! %s", error);
 	}
 	else{
 		new String:data[65]
@@ -264,9 +263,6 @@ public cacheThread(Handle:owner, Handle:HQuery, const String:error[], any:client
 
 public noCallback(Handle:owner, Handle:HQuery, const String:error[], any:client)
 {
-	if(HQuery == INVALID_HANDLE){
-		PrintToServer("noCallback Query failed! %s", error);
-	}
 	activeThreads--;
 	CloseHandle(HQuery); //make sure the handle is closed before we allow anything to happen
 }
@@ -494,8 +490,8 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 		GetClientName(client, name1, sizeof(name1)); //shooter
 		GetClientName(client2, name2, sizeof(name2)); //got shot
 		
-		if(GetClientTeam(client) == 3) Client_PrintToChatAll(false,"{B}%s (%d) {G}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
-		else Client_PrintToChatAll(false,"{R}%s (%d) {R}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
+		if(GetClientTeam(client) == 3) Client_PrintToChatAll(false,"{B}%s (%d) {R}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
+		else Client_PrintToChatAll(false,"{R}%s (%d) {B}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
 		
 		if (dbt == INVALID_HANDLE)
 		{
@@ -681,8 +677,8 @@ public void copyOut()
 			GetClientName(client, name1, sizeof(name1)); //shooter
 			GetClientName(client2, name2, sizeof(name2)); //got shot
 			
-			if(GetClientTeam(client) == 3) Client_PrintToChatAll(false, "{G}Kill #%d {B}%s (%d) {G}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
-			else Client_PrintToChatAll(false, "{R}Kill #%d {R}%s (%d) {G}killed %s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+			if(GetClientTeam(client) == 3) Client_PrintToChatAll(false, "Kill #%d {BR}%s (%d) {O}killed {R}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+			else Client_PrintToChatAll(false, "Kill #%d {RB}%s (%d) {O}killed {B}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
 				
 			updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
 			updateName(StringToInt(steamId2), name2);
