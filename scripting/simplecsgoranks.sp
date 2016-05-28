@@ -38,6 +38,9 @@ int shooter[255];//array of clients
 int assister[255];//array of clients
 int shot[255];
 
+int ids[65];
+new String:idsNames[65][65];
+
 //convars
 ConVar sm_simplecsgoranks_mode;
 ConVar sm_simplecsgoranks_ffa;
@@ -615,6 +618,22 @@ public void updateName(int steamId, char name[64])
 
 }
 
+public void getClients()
+{
+	new String:data[65];
+	new maxclients = GetMaxClients();
+	for(new j=1; j <= maxclients; j++)
+	{
+		if(IsClientConnected(j)){
+			ids[j] = getSteamIdNumber(j);
+			GetClientName(j, data, sizeof(data));
+			idsNames[j] = data;
+			
+		}
+		else ids[j] = -1;
+	}
+}
+
 //Copies out the array at the end of the round
 public void copyOut()
 {
@@ -687,7 +706,9 @@ public void copyOut()
 			
 		}
 		else{
-			Client_PrintToChatAll(false, "{G}Kill #%d Player Left.", (shotCountdown+1) );
+			//one of them disconnected.
+			userShot(ids[client], ids[client2] ,0, 0);
+			Client_PrintToChatAll(false, "{O}Kill #%d %s Killed %s. Player Left.", (shotCountdown+1), idsNames[client], idsNames[client2] );
 		}
 		//Assister
 		if(client3 > 0){
@@ -936,6 +957,7 @@ public Action:Event_RoundStart (Handle:event, const String:name[], bool:dontBroa
 	getTop();
 	updateRanksText(); //update at the start of the round so that new players get loaded
 	PrintToServer("Update of !rank data took %f", (GetEngineTime()-copyTime));
+	getClients();
 	return Plugin_Continue;
 }
 
