@@ -368,6 +368,7 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 	else{
 		if(invalidateCache == 1) rankCacheValidate[currentClient] = 0; //invalidate the cached copy, this flag is used when the query changes the rank
 		if(printToServer == 1) PrintToServer("Returning cached rank %d", rankCache[currentClient]);
+		if( rankCache[currentClient] == 0 ) newUser(getSteamIdNumber(currentClient)); //indicates a failure
 		return rankCache[currentClient]; //return the cached copy
 	}
 }
@@ -407,8 +408,15 @@ public int getRank(int steamId, int client) //fallback method
 			rank = StringToInt(name);
 					
 			if(client > 0){
-				rankCache[client] = rank;
-				rankCacheValidate[client] = 1;
+				if(rank == 0){
+					newUser(steamId);
+					rankCache[client] = -1;
+					rankCacheValidate[client] = 1;
+				}
+				else {
+					rankCache[client] = rank;
+					rankCacheValidate[client] = 1;
+				}
 			}
 		}
 	}
