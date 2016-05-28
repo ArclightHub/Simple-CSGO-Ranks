@@ -77,7 +77,6 @@ public Plugin:myinfo =
 //sets a clients rank, checks if the client exists and then updates the rank, else it adds the user with a zero rank.
 public void setRank(int steamId, int rank, int client) //done
 {
-	newUser(steamId);
 	//time
 	new String:stime[65];
 	IntToString(GetTime(),stime,sizeof(stime));
@@ -148,7 +147,7 @@ public void purgeOldUsers()
 //this gets run whenever a new user joins the server and is authenticated
 public void newUser(int steamId) //done
 {
-	PrintToServer("New User: %d", steamId);
+	//PrintToServer("New User: %d", steamId);
 	new String:ssteamId[65];
 	new String:srank[65];
 	new String:stime[65];
@@ -188,7 +187,7 @@ public int getSteamIdNumber(int client)
 
 public OnClientPostAdminCheck(client){
 	rankCacheValidate[client] = 0;
-	newUser(getSteamIdNumber(client)); //do this on connect instead
+	//newUser(getSteamIdNumber(client)); //do this on connect instead
 	cacheCurrentClient = client; //attempt to cache a player immediately after they join
 	return;
 }
@@ -259,6 +258,10 @@ public cacheThread(Handle:owner, Handle:HQuery, const String:error[], any:client
 			SQL_FetchString(HQuery, 0, data, sizeof(data));
 			rankCache[client] = StringToInt(data);
 			rankCacheValidate[client] = 1;  //Validate once the data is copied
+		}
+		else {
+			PrintToServer("Adding new user to DB: %d", getSteamIdNumber(client));
+			newUser(getSteamIdNumber(client));
 		}
 	}
 	activeThreads--;
@@ -372,7 +375,6 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 	else{
 		if(invalidateCache == 1) rankCacheValidate[currentClient] = 0; //invalidate the cached copy, this flag is used when the query changes the rank
 		if(printToServer == 1) PrintToServer("Returning cached rank %d", rankCache[currentClient]);
-		if( rankCache[currentClient] == 0 ) newUser(getSteamIdNumber(currentClient)); //indicates a failure
 		return rankCache[currentClient]; //return the cached copy
 	}
 }
@@ -381,7 +383,7 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 //this is called whenever the rank command is used or another method needs to get a rank
 public int getRank(int steamId, int client) //fallback method
 {
-	newUser(steamId);
+	//newUser(steamId);
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
