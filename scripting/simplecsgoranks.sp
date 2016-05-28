@@ -187,7 +187,7 @@ public int getSteamIdNumber(int client)
 
 public OnClientPostAdminCheck(client){
 	rankCacheValidate[client] = 0;
-	//newUser(getSteamIdNumber(client)); //do this on connect instead
+	newUser(getSteamIdNumber(client));
 	cacheCurrentClient = client; //attempt to cache a player immediately after they join
 	return;
 }
@@ -383,7 +383,6 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 //this is called whenever the rank command is used or another method needs to get a rank
 public int getRank(int steamId, int client) //fallback method
 {
-	//newUser(steamId);
 	if(dbc == INVALID_HANDLE){ 
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		SQL_GetError(dbc, errorc, sizeof(errorc));
