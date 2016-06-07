@@ -3,7 +3,7 @@
 #include <cstrike>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.4DEV"
+#define PLUGIN_VERSION "0.2.4"
 
 //Global Variables, do NOT touch.
 bool ready = false;
