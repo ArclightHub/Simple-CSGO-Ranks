@@ -6,7 +6,6 @@
 #define PLUGIN_VERSION "0.2.4a"
 
 //Global Variables, do NOT touch.
-bool ready = false;
 int shotPlayers = -1;
 int defuser = -1; //guy who defused the bomb type is CLIENT!!
 int shotCountdown = 0;
@@ -920,7 +919,7 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 	int assist = GetClientOfUserId(GetEventInt(event, "assister"));
 	int userId = GetClientOfUserId(GetEventInt(event, "userid"));
 	if(!IsClientInGame(attacker) || !IsClientInGame(userId)) return Plugin_Continue;
-	if(!ready || IsFakeClient(attacker) || IsFakeClient(userId)) return Plugin_Continue;
+	if(IsFakeClient(attacker) || IsFakeClient(userId)) return Plugin_Continue;
 	if(userId == 0 ||  attacker == 0) return Plugin_Continue; //fix
 	if(shotPlayers < 0) shotPlayers = 0; //out of range check //This happens on the first kill of each round. If no kills occur in a round this prevents it from crashing. its essential
 	
