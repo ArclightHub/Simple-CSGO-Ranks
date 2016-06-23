@@ -530,6 +530,7 @@ public void updateName(int steamId, char name[64])
 	new String:buffer[130];
 	ReplaceString(name, sizeof(name), "select", "", false);
 	ReplaceString(name, sizeof(name), "drop", "", false);
+	ReplaceString(name, sizeof(name), "OR", "", false);
 	ReplaceString(name, sizeof(name), "table", "", false);
 	ReplaceString(name, sizeof(name), "insert", "", false);
 	ReplaceString(name, sizeof(name), "where", "", false);
@@ -541,8 +542,10 @@ public void updateName(int steamId, char name[64])
 	ReplaceString(name, sizeof(name), "\"", "", false);
 	ReplaceString(name, sizeof(name), "/", "", false);
 	ReplaceString(name, sizeof(name), "\\", "", false);
+	ReplaceString(name, sizeof(name), "&", "", false); //People have been spamming this character in order to take up huge amounts of space in the chat text.
 	ReplaceString(name, sizeof(name), ";", "", false);
-	ReplaceString(name, sizeof(name), " OR ", "", false);
+	ReplaceString(name, sizeof(name), "%", "", false);
+	ReplaceString(name, sizeof(name), "`", "", false);
 	ReplaceString(name, sizeof(name), "join", "", false);
 	SQL_EscapeString(dbt, name, buffer, sizeof(buffer));
 	new String:query[700]; //surely enough for a long name?
@@ -774,7 +777,12 @@ public Action:Timer_Verify(Handle:timer)
 
 	if (dbt == INVALID_HANDLE)
 	{
+		PrintToServer("Error detected. Writing to log.");
+		LogMessage("%s", "---Start of crash log---");
+		LogMessage("Database: %s", databaseName);
 		SQL_GetError(dbt, errorc, sizeof(errorc));
+		LogMessage("%s", errorc);
+		LogMessage("%s", "---End of crash log---");
 		PrintToServer("Database access failure. This is a fatal error. (error: %s)", errorc);
 		PrintToServer("The plugin will now halt. Please try 'sm plugins reload simplecsgoranks' once you have solved the issue.");
 	}
