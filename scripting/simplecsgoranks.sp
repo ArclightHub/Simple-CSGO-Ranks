@@ -3,7 +3,7 @@
 #include <cstrike>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.4"
+#define PLUGIN_VERSION "0.2.4a"
 
 //Global Variables, do NOT touch.
 bool ready = false;
@@ -521,70 +521,6 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 	}
 }
 
-public bool dbWorks()
-{
-	//should return 1
-	int isWorking = 0;
-	new String:error2[255]
-	//new Handle:db = SQL_DefConnect(error2, sizeof(error2))
-	new Handle:db = SQL_Connect(databaseName, false, error2, sizeof(error2));
-	if (db == INVALID_HANDLE)
-	{
-		if(printToServer == 1 || true) PrintToServer("Could not connect: %s", error2)
-	}
-	else
-	{
-		new Handle:query = SQL_Query(db, "SELECT count(*) FROM information_schema.tables WHERE table_name = 'steam'")
-		if (query == INVALID_HANDLE)
-		{
-			new String:error[255]
-			SQL_GetError(db, error, sizeof(error))
-			if(printToServer == 1 || true) PrintToServer("Failed to query (error: %s)", error)
-		} else {
-
-			new String:name[65]
-			while (SQL_FetchRow(query))
-			{
-				SQL_FetchString(query, 0, name, sizeof(name))
-				PrintToServer("Database access check passed")
-				isWorking = 1;//StringToInt(name);
-			}
-		}
-		CloseHandle(query)
-		
-	}
-	CloseHandle(db)
-	if(isWorking > 0) return true;
-	else return false;	
-}
-
-public void newDB()
-{
-	PrintToServer("Database setup has been called.")
-	PrintToServer("If you get an error here you probably need to fix your database.")
-	PrintToServer("Try changing your databases.cfg file");
-	//add table to db
-	new String:error2[255]
-	//new Handle:db = SQL_DefConnect(error2, sizeof(error2))
-	new Handle:db = SQL_Connect(databaseName, false, error2, sizeof(error2));
-
-	//CREATE DATABASE IF NOT EXISTS steam
-	if(printToServer == 1) PrintToServer("Adding database tables");
-	if (!SQL_FastQuery(db, "CREATE TABLE `steam` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `rank` char(65) DEFAULT NULL, `age` char(65) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1"))
-	{
-		new String:error[255]
-		SQL_GetError(db, error, sizeof(error))
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error) //always print now to easily allow users to determine early issues
-	}
-	if (!SQL_FastQuery(db, "CREATE TABLE `steamname` (`steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '', `name` char(255) DEFAULT NULL, PRIMARY KEY (`steamId`)) ENGINE=InnoDB DEFAULT CHARSET=latin1;"))
-	{
-		new String:error3[255]
-		SQL_GetError(db, error3, sizeof(error3))
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error3)
-	}
-	CloseHandle(db)
-	return;
-}
 //new
 public void updateName(int steamId, char name[64])
 {
@@ -827,6 +763,28 @@ public Action:Timer_Verify(Handle:timer)
 	CreateTimer(300.0, Timer_Top, _, TIMER_REPEAT);
 	if(immediateMode == 1) CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 
+	PrintToServer("SimpleCSGORanks loaded.");
+	//dbc = SQL_DefConnect(errorc, sizeof(errorc)); //open the connection that will be used for the rest of the time
+	dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+	databaseCheck = databaseName; //update it
+
+	PrintToServer("Attempting to connect to database using %s", databaseName);
+	dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+
+	if (dbt == INVALID_HANDLE)
+	{
+		SQL_GetError(dbt, errorc, sizeof(errorc));
+		PrintToServer("Database access failure. This is a fatal error. (error: %s)", errorc);
+		PrintToServer("The plugin will now halt. Please try 'sm plugins reload simplecsgoranks' once you have solved the issue.");
+	}
+	else {
+		PrintToServer("Database connection successful. Ranks are now being recorded.");
+		HookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre)
+		HookEvent("round_prestart", Event_RoundEnd) //round_end
+		HookEvent("round_poststart", Event_RoundStart) //new round
+		HookEvent("bomb_defused", Event_BombDefused) //bomb gets defused
+	}
+
 }
 
 public OnConfigsExecuted()
@@ -896,30 +854,6 @@ public OnPluginStart()
 	if(GetDebugConvar() == 1) printToServer = 1;
 	else if(GetDebugConvar() == 0) printToServer = 0;
 	PrintToServer("Database: \"%s\"  Got:\"%s\"", databaseName, databaseNew);
-	
-	ready = dbWorks(); //check if the database is set up. This does not ever function if sourcemod does not have mysql set up
-	if(!ready){
-		newDB(); //create a new table in the database if its not there
-		ready = dbWorks(); //check again
-	}
-	//if the database doesnt work at all just disable the plugin
-	 //try to clean the DB
-	if(ready){
-		HookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre)
-		HookEvent("round_prestart", Event_RoundEnd) //round_end
-		HookEvent("round_poststart", Event_RoundStart) //new round
-		HookEvent("bomb_defused", Event_BombDefused) //bomb gets defused
-		PrintToServer("SimpleCSGORanks loaded. Database appears to be working");
-		//dbc = SQL_DefConnect(errorc, sizeof(errorc)); //open the connection that will be used for the rest of the time
-		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-		databaseCheck = databaseName; //update it
-
-		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-	}
-	else{
-		PrintToServer("Database Failure. Please make sure your MySQL database is correctly set up. If you believe it is please check the databases.cfg file, check the permissions and check the port."); //inform the user that its broken
-	}
-	//if(ready) purgeOldUsers();
 }
 
 public Action:Event_BombDefused(Handle:event, const String:name[], bool:dontBroadcast) //new
