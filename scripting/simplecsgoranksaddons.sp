@@ -208,7 +208,7 @@ public Action:Timer_executeQueries(Handle:timer)
 			queryType = 1; 
 			currentOperate = roundIndex; 
 			PrintToServer("Updating player:%d", round[currentOperate][0]);
-			Format(aquery, sizeof(aquery), "INSERT INTO rounds VALUES(%d, 1, %d, '') ON DUPLICATE KEY UPDATE rounds = rounds + 1, wins = wins + %d", round[currentOperate][0], round[currentOperate][1], round[currentOperate][1]);
+			Format(aquery, sizeof(aquery), "INSERT INTO rounds VALUES(%d, 1, %d, NOW()) ON DUPLICATE KEY UPDATE rounds = rounds + 1, wins = wins + %d", round[currentOperate][0], round[currentOperate][1], round[currentOperate][1]);
 			//INSERT INTO steamname (steamId,name) VALUES ('%d','\%s\') ON DUPLICATE KEY UPDATE name='\%s\'
 			dbLocked = 1;
 			SQL_TQuery(dbc, queryCallback, aquery, 1);
