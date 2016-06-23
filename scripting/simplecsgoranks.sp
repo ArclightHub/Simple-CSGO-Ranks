@@ -768,6 +768,7 @@ public Action:Timer_Verify(Handle:timer)
 	dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 	databaseCheck = databaseName; //update it
 
+	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
 	PrintToServer("Attempting to connect to database using %s", databaseName);
 	dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 
