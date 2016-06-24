@@ -3,9 +3,10 @@
 #include <cstrike>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.4a"
+#define PLUGIN_VERSION "0.2.5Dev"
 
 //Global Variables, do NOT touch.
+bool ready = false;
 int shotPlayers = -1;
 int defuser = -1; //guy who defused the bomb type is CLIENT!!
 int shotCountdown = 0;
@@ -33,9 +34,10 @@ new String:databaseNew[128] = "default";
 new String:databaseCheck[128] = "default";
 new String:ranksText2[65][65];
 new String:topRanks[50][128];
-int shooter[255];//array of clients
-int assister[255];//array of clients
-int shot[255];
+
+int shooter[65];//array of clients
+int assister[65];//array of clients
+int shot[65];
 
 int ids[65];
 new String:idsNames[65][65];
@@ -174,7 +176,7 @@ public void newUser(int steamId) //done
 
 public int getSteamIdNumber(int client)
 {
-	if(!IsClientConnected(client)) return -1;
+	if(!(client)) return -1;
 	decl String:steamId[64]; //defused the bomb
 	GetClientAuthId(client, AuthId_Steam3, steamId, sizeof(steamId));
 	ReplaceString(steamId, sizeof(steamId), "[U:1:", "", false);
@@ -308,6 +310,7 @@ public Action:Timer_Cache(Handle:timer)
 
 	if( 1+cacheCurrentClient%maxclients  > maxclients) return Plugin_Continue;
 	if(!IsClientConnected(1+cacheCurrentClient%maxclients))	return Plugin_Continue;
+	if(!IsClientAuthorized(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
 	if(IsFakeClient(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
 	if(!IsClientInGame(1+cacheCurrentClient%maxclients)) {
 		//if the spot is empty
@@ -572,18 +575,29 @@ public void getClients()
 	for(new j=1; j <= maxclients; j++)
 	{
 		if(IsClientConnected(j)){
-			ids[j] = getSteamIdNumber(j);
-			GetClientName(j, data, sizeof(data));
-			idsNames[j] = data;
+			if(IsClientAuthorized(j)){
+				ids[j] = getSteamIdNumber(j);
+				GetClientName(j, data, sizeof(data));
+				idsNames[j] = data;
+			}
 			
 		}
 		else ids[j] = -1;
 	}
 }
 
+public Action:Force_End_Copy(Handle:timer)
+{
+	shotPlayers = -1;
+	defuser = -1;
+}
+
 //Copies out the array at the end of the round
 public void copyOut()
 {
+
+	
+
 	decl String:steamId1[64]; //shooter
 	decl String:steamId4[64]; //assister
 	decl String:steamId2[64]; //got shot
@@ -603,13 +617,15 @@ public void copyOut()
 	{	
 		if(IsClientConnected(defuser)) // Removed  && !IsFakeClient(defuser)
 		{
-			GetClientName(defuser, name3, sizeof(name3)); //got shot
-			GetClientAuthId(defuser, AuthId_Steam3, steamId3, sizeof(steamId3));
-			ReplaceString(steamId3, sizeof(steamId3), "[U:1:", "", false);
-			ReplaceString(steamId3, sizeof(steamId3), "[U:0:", "", false);
-			ReplaceString(steamId3, sizeof(steamId3), "]", "", false);
-			PrintToChatAll("%s has defused the bomb! +5 rank!", name3);
-			addRank(StringToInt(steamId3), 5, defuser);		
+			if(IsClientAuthorized(defuser)) {
+				GetClientName(defuser, name3, sizeof(name3)); //got shot
+				GetClientAuthId(defuser, AuthId_Steam3, steamId3, sizeof(steamId3));
+				ReplaceString(steamId3, sizeof(steamId3), "[U:1:", "", false);
+				ReplaceString(steamId3, sizeof(steamId3), "[U:0:", "", false);
+				ReplaceString(steamId3, sizeof(steamId3), "]", "", false);
+				PrintToChatAll("%s has defused the bomb! +5 rank!", name3);
+				addRank(StringToInt(steamId3), 5, defuser);
+			}		
 		}
 		defuser = -1; //ready the variable for the next round
 	}
@@ -625,31 +641,31 @@ public void copyOut()
 		//check if they are connected
 		if(IsClientConnected(client) && IsClientConnected(client2)) //removed && !IsFakeClient(client) && !IsFakeClient(client2)
 		{
-			if(printToServer == 1) PrintToServer("Killer:client:%d  Killed:client2:%d", client, client2);
-			GetClientAuthId(client, AuthId_Steam3, steamId1, sizeof(steamId1));
-			GetClientAuthId(client2, AuthId_Steam3, steamId2, sizeof(steamId2));
+			if(IsClientAuthorized(client) && IsClientAuthorized(client2)) {
+				if(printToServer == 1) PrintToServer("Killer:client:%d  Killed:client2:%d", client, client2);
+				GetClientAuthId(client, AuthId_Steam3, steamId1, sizeof(steamId1));
+				GetClientAuthId(client2, AuthId_Steam3, steamId2, sizeof(steamId2));
 		
-			ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
-			ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
-			ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
-			ReplaceString(steamId2, sizeof(steamId2), "[U:1:", "", false);
-			ReplaceString(steamId2, sizeof(steamId2), "[U:0:", "", false);
-			ReplaceString(steamId2, sizeof(steamId2), "]", "", false);
-			if(printToServer == 1) PrintToServer("Killer:SteamId1:%s  Killed:SteamId2:%s", steamId1, steamId2);
+				ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
+				ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
+				ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
+				ReplaceString(steamId2, sizeof(steamId2), "[U:1:", "", false);
+				ReplaceString(steamId2, sizeof(steamId2), "[U:0:", "", false);
+				ReplaceString(steamId2, sizeof(steamId2), "]", "", false);
+				if(printToServer == 1) PrintToServer("Killer:SteamId1:%s  Killed:SteamId2:%s", steamId1, steamId2);
 
-			userShot(StringToInt(steamId1),StringToInt(steamId2), client, client2); //adds to first, takes from second
+				userShot(StringToInt(steamId1),StringToInt(steamId2), client, client2); //adds to first, takes from second
 
-			//print out info
-			GetClientName(client, name1, sizeof(name1)); //shooter
-			GetClientName(client2, name2, sizeof(name2)); //got shot
+				//print out info
+				GetClientName(client, name1, sizeof(name1)); //shooter
+				GetClientName(client2, name2, sizeof(name2)); //got shot
 			
-			if(GetClientTeam(client) == 3) Client_PrintToChatAll(false, "Kill #%d {BR}%s (%d) {O}killed {R}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
-			else Client_PrintToChatAll(false, "Kill #%d {RB}%s (%d) {O}killed {B}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+				if(GetClientTeam(client) == 3) Client_PrintToChatAll(false, "Kill #%d {BR}%s (%d) {O}killed {R}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+				else Client_PrintToChatAll(false, "Kill #%d {RB}%s (%d) {O}killed {B}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
 				
-			updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
-			updateName(StringToInt(steamId2), name2);
-
-			
+				updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
+				updateName(StringToInt(steamId2), name2);
+			}
 			
 		}
 		else{
@@ -659,18 +675,20 @@ public void copyOut()
 		}
 		//Assister
 		if(client3 > 0){
-			if(IsClientConnected(client3)) //&& !IsFakeClient(client3)
+			if(IsClientConnected(client3))
 			{
-				GetClientAuthId(client3, AuthId_Steam3, steamId4, sizeof(steamId4));
-				ReplaceString(steamId4, sizeof(steamId4), "[U:1:", "", false);
-				ReplaceString(steamId4, sizeof(steamId4), "[U:0:", "", false);
-				ReplaceString(steamId4, sizeof(steamId4), "]", "", false);
-				GetClientName(client3, name4, sizeof(name4));
+				if(IsClientAuthorized(client3)){
+					GetClientAuthId(client3, AuthId_Steam3, steamId4, sizeof(steamId4));
+					ReplaceString(steamId4, sizeof(steamId4), "[U:1:", "", false);
+					ReplaceString(steamId4, sizeof(steamId4), "[U:0:", "", false);
+					ReplaceString(steamId4, sizeof(steamId4), "]", "", false);
+					GetClientName(client3, name4, sizeof(name4));
 				
-				//add +2 for assist
-				addRank(StringToInt(steamId4), 2, client3);
+					//add +2 for assist
+					addRank(StringToInt(steamId4), 2, client3);
 				
-				Client_PrintToChatAll(false, "{B}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
+					Client_PrintToChatAll(false, "{B}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
+				}
 			}
 		}
 		shotCountdown++;
@@ -757,7 +775,7 @@ public Action:Timer_Verify(Handle:timer)
 	PrintToServer("sm_simplecsgoranks_higher_rank_additional %d", higherRankFactor);
 	PrintToServer("sm_simplecsgoranks_kill_points %d", killPoints);
 	PrintToServer("sm_simplecsgoranks_cleaning %d", dbCleaning);
-	if( dbCleaning > -1) purgeOldUsers();
+	
 
 	if(useMaxThreads == 1) CreateTimer(0.1, Timer_Cache, _, TIMER_REPEAT);
 	else if(useSlowCache == 0) CreateTimer(0.3, Timer_Cache, _, TIMER_REPEAT);
@@ -766,8 +784,7 @@ public Action:Timer_Verify(Handle:timer)
 	if(immediateMode == 1) CreateTimer(60.0, Timer_Ranks, _, TIMER_REPEAT); //updates ranks command every X seconds
 
 	PrintToServer("SimpleCSGORanks loaded.");
-	//dbc = SQL_DefConnect(errorc, sizeof(errorc)); //open the connection that will be used for the rest of the time
-	dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+	dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc)); //fallback connection
 	databaseCheck = databaseName; //update it
 
 	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
@@ -786,6 +803,7 @@ public Action:Timer_Verify(Handle:timer)
 		PrintToServer("The plugin will now halt. Please try 'sm plugins reload simplecsgoranks' once you have solved the issue.");
 	}
 	else {
+		if( dbCleaning > -1) purgeOldUsers();
 		PrintToServer("Database connection successful. Ranks are now being recorded.");
 		HookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre)
 		HookEvent("round_prestart", Event_RoundEnd) //round_end
@@ -896,6 +914,8 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 	if(shotPlayers > -1)Client_PrintToChatAll(false, "{B}----Round Over----");//PrintToChatAll("----Round Over----"); //PLUGIN_VERSION
 	if(shotPlayers > -1)Client_PrintToChatAll(false, "{G}SimpleCSGORanks v%s", PLUGIN_VERSION);
 	if(shotPlayers > -1)Client_PrintToChatAll(false, "{B}Calculating kills and ranks.");//PrintToChatAll("Pausing game: Calculating kills and ranks.");
+	
+	CreateTimer(1.0, Force_End_Copy);
 	copyOut();
 	
 	Client_PrintToChatAll(false, "{G} -- New Round --");
@@ -919,7 +939,7 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 	int assist = GetClientOfUserId(GetEventInt(event, "assister"));
 	int userId = GetClientOfUserId(GetEventInt(event, "userid"));
 	if(!IsClientInGame(attacker) || !IsClientInGame(userId)) return Plugin_Continue;
-	if(IsFakeClient(attacker) || IsFakeClient(userId)) return Plugin_Continue;
+	if(!ready || IsFakeClient(attacker) || IsFakeClient(userId)) return Plugin_Continue;
 	if(userId == 0 ||  attacker == 0) return Plugin_Continue; //fix
 	if(shotPlayers < 0) shotPlayers = 0; //out of range check //This happens on the first kill of each round. If no kills occur in a round this prevents it from crashing. its essential
 	
@@ -929,8 +949,9 @@ public Action:Event_PlayerDeath(Handle:event, const String:name[], bool:dontBroa
 		return Plugin_Continue;
 	}
 	
-	if(shotPlayers > 254) {
-	copyOut(); //if the buffer fills because you use a dumb addon that allows more than 32 players per team dont let it crash
+	if(shotPlayers > 64) {
+	CreateTimer(1.0, Force_End_Copy);
+	copyOut(); //if the buffer fills dont let it crash
 	}
 
 	if(gameType == 1 || GetClientTeam(userId) != GetClientTeam(attacker))
