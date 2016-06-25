@@ -3,7 +3,7 @@
 #include <cstrike>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.5Dev"
+#define PLUGIN_VERSION "0.2.5Dev1"
 
 //Global Variables, do NOT touch.
 int shotPlayers = -1;
@@ -13,6 +13,7 @@ Handle dbc;
 Handle dbt; //handle for threaded query
 char errorc[255];
 float copyTime;
+int hooksEnabled = 0;
 
 int rankCache[65]; //Caches ranks for threaded operation
 int rankCacheValidate[65]; //Validation
@@ -589,6 +590,7 @@ public Action:Force_End_Copy(Handle:timer)
 {
 	shotPlayers = -1;
 	defuser = -1;
+	shotCountdown =  256;
 }
 
 //Copies out the array at the end of the round
@@ -804,10 +806,13 @@ public Action:Timer_Verify(Handle:timer)
 	else {
 		if( dbCleaning > -1) purgeOldUsers();
 		PrintToServer("Database connection successful. Ranks are now being recorded.");
-		HookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre)
-		HookEvent("round_prestart", Event_RoundEnd) //round_end
-		HookEvent("round_poststart", Event_RoundStart) //new round
-		HookEvent("bomb_defused", Event_BombDefused) //bomb gets defused
+		if(hooksEnabled == 0){
+			HookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre)
+			HookEvent("round_prestart", Event_RoundEnd) //round_end
+			HookEvent("round_poststart", Event_RoundStart) //new round
+			HookEvent("bomb_defused", Event_BombDefused) //bomb gets defused
+			hooksEnabled = 1;
+		}
 	}
 
 }
