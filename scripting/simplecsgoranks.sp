@@ -112,6 +112,7 @@ public void purgeOldUsers()
 	if(dbCleaning == 0) PrintToServer("DB Cleaning: Disabled");
 	else if(dbCleaning == 1) PrintToServer("DB Cleaning: Basic");
 	else if(dbCleaning == 2) PrintToServer("DB Cleaning: Full");
+	else if(dbCleaning == 3) PrintToServer("DB Cleaning: Experimental");
 	
 	if( dbCleaning == 0 ) return;
 
@@ -142,6 +143,20 @@ public void purgeOldUsers()
 		SQL_GetError(dbc, error4, sizeof(error4))
 		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error4)
 	}
+	if( dbCleaning == 2 ) return;
+	if (!SQL_FastQuery(dbc, "optimize table steam"))
+	{
+		new String:error6[255]
+		SQL_GetError(dbc, error6, sizeof(error6))
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error6)
+	}
+	if (!SQL_FastQuery(dbc, "optimize table steamname"))
+	{
+		new String:error7[255]
+		SQL_GetError(dbc, error7, sizeof(error7))
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error7)
+	}
+
 	return;
 }
 
