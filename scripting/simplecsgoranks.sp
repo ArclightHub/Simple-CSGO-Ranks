@@ -934,7 +934,7 @@ public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadca
 	GetDatabaseConvar();
 	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
 	if(printToServer == 1) PrintToServer("Database: \"%s\"  Got:\"%s\"", databaseName, databaseNew);
-	if(strcmp(databaseCheck, databaseName, false) == 0) {
+	if(strcmp(databaseCheck, databaseName, false) != 0) {
 		//connect to the new convar.
 		databaseCheck = databaseName;
 		CloseHandle(dbc);
