@@ -109,11 +109,17 @@ public void addRank(int steamId, int points, int client)
 
 public void purgeOldUsers() 
 {
-	if(dbCleaning == 0) PrintToServer("DB Cleaning: Disabled");
+	if(dbCleaning == 0) PrintToServer("DB Cleaning: Disabled, Essential Updates Only");
 	else if(dbCleaning == 1) PrintToServer("DB Cleaning: Basic");
 	else if(dbCleaning == 2) PrintToServer("DB Cleaning: Full");
 	else if(dbCleaning == 3) PrintToServer("DB Cleaning: Experimental");
 	
+	if (!SQL_FastQuery(dbc, "ALTER TABLE `steam` CHANGE `rank` `rank` INT(9) NULL DEFAULT NULL"))
+	{
+		new String:error0[255]
+		SQL_GetError(dbc, error0, sizeof(error0))
+		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error0)
+	}
 	if( dbCleaning == 0 ) return;
 
 	if (!SQL_FastQuery(dbc, "DELETE FROM steam WHERE rank = 100"))
@@ -449,7 +455,7 @@ public getRank2(int steamId, int i)
 	new String:ssteamId[65];
 	IntToString(steamId,ssteamId,sizeof(ssteamId));
 	new String:query[400];
-	Format(query, sizeof(query), "(SELECT CONCAT((SELECT count(steamId)+1 from steam where cast(rank as signed) > cast((SELECT rank from steam WHERE steamId =  %s LIMIT 1) as signed)),'/', (SELECT count(steamId) from steam)))", ssteamId); //limited
+	Format(query, sizeof(query), "(SELECT CONCAT((SELECT count(steamId)+1 from steam where rank > (SELECT rank from steam WHERE steamId =  %s LIMIT 1)),'/', (SELECT count(steamId) from steam)))", ssteamId); //limited
 	if(printToServer == 1) PrintToServer("query: %s", query);
 	
 	if (dbt == INVALID_HANDLE)
@@ -494,8 +500,8 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 	}
 
 
-	Format(query, sizeof(query), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank+%d+%d ELSE rank+%d END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId1, stime, ssteamId1);
-	Format(query2, sizeof(query2), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT cast(rank as decimal)+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank as decimal) FROM steam WHERE steamId = %s LIMIT 1) THEN rank-%d-%d ELSE rank-%d-1 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId2, stime, ssteamId2);
+	Format(query, sizeof(query), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT rank+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT rank FROM steam WHERE steamId = %s LIMIT 1) THEN rank+%d+%d ELSE rank+%d END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId1, stime, ssteamId1);
+	Format(query2, sizeof(query2), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT rank+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank FROM steam WHERE steamId = %s LIMIT 1) THEN rank-%d-%d ELSE rank-%d-1 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId2, stime, ssteamId2);
 
 	if(printToServer == 1) PrintToServer("query: %s", query);	
 	if( immediateMode == 0 )
@@ -545,14 +551,14 @@ public void updateName(int steamId, char name[64])
 	//id needs to be set to be a primary key
 	//CREATE TABLE `steamname` ( steamId CHAR(65) CHARACTER SET utf8 COLLATE utf8_bin, name CHAR(255), PRIMARY KEY (steamId));
 	new String:buffer[130];
-	ReplaceString(name, sizeof(name), "select", "", false);
-	ReplaceString(name, sizeof(name), "drop", "", false);
-	ReplaceString(name, sizeof(name), "OR", "", false);
-	ReplaceString(name, sizeof(name), "table", "", false);
-	ReplaceString(name, sizeof(name), "insert", "", false);
-	ReplaceString(name, sizeof(name), "where", "", false);
+	new String:quoteString[1];
+
+	StripQuotes(name);
+	IntToString(34, quoteString, 1);
+	ReplaceString(name, sizeof(name), quoteString, "", false);
+	StripQuotes(name);
+
 	ReplaceString(name, sizeof(name), "=", "", false);
-	ReplaceString(name, sizeof(name), "use", "", false);
 	ReplaceString(name, sizeof(name), "/", "", false);
 	ReplaceString(name, sizeof(name), "|", "", false);
 	ReplaceString(name, sizeof(name), "'", "", false);
@@ -563,7 +569,21 @@ public void updateName(int steamId, char name[64])
 	ReplaceString(name, sizeof(name), ";", "", false);
 	ReplaceString(name, sizeof(name), "%", "", false);
 	ReplaceString(name, sizeof(name), "`", "", false);
+
+	//Reserved words
 	ReplaceString(name, sizeof(name), "join", "", false);
+	ReplaceString(name, sizeof(name), "using", "", false);
+	ReplaceString(name, sizeof(name), "alter", "", false);
+	ReplaceString(name, sizeof(name), "select", "", false);
+	ReplaceString(name, sizeof(name), "drop", "", false);
+	ReplaceString(name, sizeof(name), "OR", "", false);
+	ReplaceString(name, sizeof(name), "table", "", false);
+	ReplaceString(name, sizeof(name), "insert", "", false);
+	ReplaceString(name, sizeof(name), "where", "", false);
+	ReplaceString(name, sizeof(name), "use", "", false);
+	ReplaceString(name, sizeof(name), "delete", "", false);
+	ReplaceString(name, sizeof(name), "true", "", false);
+
 	SQL_EscapeString(dbt, name, buffer, sizeof(buffer));
 	new String:query[700]; //surely enough for a long name?
 	Format(query, sizeof(query), "INSERT IGNORE INTO steamname (steamId,name) VALUES ('%d','\%s\') ON DUPLICATE KEY UPDATE name='\%s\'", steamId, buffer, buffer); //name changed to buffer
