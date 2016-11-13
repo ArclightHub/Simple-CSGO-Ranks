@@ -826,6 +826,7 @@ public Action:Timer_Verify(Handle:timer)
 			HookEvent("round_prestart", Event_RoundEnd) //round_end
 			HookEvent("round_poststart", Event_RoundStart) //new round
 			HookEvent("bomb_defused", Event_BombDefused) //bomb gets defused
+			HookEvent("hostage_rescued", Event_BombDefused) //Add support for hostage rescue
 			hooksEnabled = 1;
 		}
 	}
