@@ -3,7 +3,7 @@
 #include <cstrike>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.4a"
+#define PLUGIN_VERSION "0.2.4b"
 
 //Global Variables, do NOT touch.
 int shotPlayers = -1;
@@ -17,6 +17,7 @@ float copyTime;
 int rankCache[65]; //Caches ranks for threaded operation
 int rankCacheValidate[65]; //Validation
 int cacheCurrentClient = 1;
+int hooksActive = 0;
 
 //Global Variables, you can touch.
 
@@ -785,7 +786,7 @@ public Action:Timer_Verify(Handle:timer)
 		PrintToServer("Database access failure. This is a fatal error. (error: %s)", errorc);
 		PrintToServer("The plugin will now halt. Please try 'sm plugins reload simplecsgoranks' once you have solved the issue.");
 	}
-	else {
+	else if(hooksActive == 0) {
 		PrintToServer("Database connection successful. Ranks are now being recorded.");
 		HookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre)
 		HookEvent("round_prestart", Event_RoundEnd) //round_end
@@ -873,17 +874,19 @@ public Action:Event_BombDefused(Handle:event, const String:name[], bool:dontBroa
 
 public Action:Event_RoundEnd(Handle:event, const String:name[], bool:dontBroadcast)
 {
-	
+	hooksActive = 1;
 	GetDatabaseConvar();
 	if(strcmp(databaseNew, "", false) != 0) Format(databaseName, sizeof(databaseName), "%s", databaseNew);
 	if(printToServer == 1) PrintToServer("Database: \"%s\"  Got:\"%s\"", databaseName, databaseNew);
-	if(strcmp(databaseCheck, databaseName, false) == 0) {
+
+	if(strcmp(databaseCheck, databaseName, false) != 0) {
 		//connect to the new convar.
-		databaseCheck = databaseName;
 		CloseHandle(dbc);
 		dbc = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
 		CloseHandle(dbt);
 		dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+		databaseCheck = databaseName; //change this to confirm a change in the database
+		PrintToServer("Database has been set to %s.", databaseName);
 	}
 	if(GetDebugConvar() == 1) printToServer = 1;
 	else if(GetDebugConvar() == 0) printToServer = 0;
