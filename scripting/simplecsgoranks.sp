@@ -510,12 +510,13 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 			SQL_GetError(dbt, errorc, sizeof(errorc));
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
-		if( setRankOnDisconnectOnly == 1 ) {
+		if( setRankOnDisconnectOnly == 0 ) {
 			activeThreads++;
 			SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
 			activeThreads++;
 			SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
 		}
+		else PrintToServer("Skipping DB Update");
 	}
 	else
 	{
@@ -534,12 +535,13 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 			SQL_GetError(dbt, errorc, sizeof(errorc));
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
-		if( setRankOnDisconnectOnly == 1 ) {		
+		if( setRankOnDisconnectOnly == 0 ) {		
 			activeThreads++;
 			SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
 			activeThreads++;
 			SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
 		}
+		else PrintToServer("Skipping DB Update");
 		updateName(steamId1, name1); //make sure the users name is in the DB
 		updateName(steamId2, name2);
 		
