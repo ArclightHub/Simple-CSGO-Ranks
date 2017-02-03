@@ -555,11 +555,6 @@ public void updateName(int steamId, char name[64])
 	//id needs to be set to be a primary key
 	//CREATE TABLE `steamname` ( steamId CHAR(65) CHARACTER SET utf8 COLLATE utf8_bin, name CHAR(255), PRIMARY KEY (steamId));
 	new String:buffer[130];
-	new String:quoteString[1];
-
-	StripQuotes(name);
-	IntToString(34, quoteString, 1);
-	ReplaceString(name, sizeof(name), quoteString, "", false);
 	StripQuotes(name);
 
 	ReplaceString(name, sizeof(name), "=", "", false);
