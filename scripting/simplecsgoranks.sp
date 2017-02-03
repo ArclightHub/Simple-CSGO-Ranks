@@ -3,7 +3,7 @@
 #include <cstrike>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.5Dev1"
+#define PLUGIN_VERSION "0.2.5Dev2"
 
 //Global Variables, do NOT touch.
 int shotPlayers = -1;
@@ -26,6 +26,7 @@ int immediateMode = 0; //Use immediate thread instead of slow round method. Good
 int useMaxThreads = 0; //Use the maximum safe number of threads at once. Experimental
 int activeThreads = 0;
 int useSlowCache = 1;
+int setRankOnDisconnectOnly = 0;
 
 int gameType = 0;
 int ranksText[320];
@@ -47,6 +48,7 @@ ConVar sm_simplecsgoranks_mode;
 ConVar sm_simplecsgoranks_ffa;
 ConVar sm_simplecsgoranks_useMaxThreads;
 ConVar sm_simplecsgoranks_useSlowCache;
+ConVar sm_simplecsgoranks_setRankOnDisconnectOnly;
 
 ConVar sm_simplecsgoranks_kill_points;
 ConVar sm_simplecsgoranks_higher_rank_additional;
@@ -114,12 +116,9 @@ public void purgeOldUsers()
 	else if(dbCleaning == 2) PrintToServer("DB Cleaning: Full");
 	else if(dbCleaning == 3) PrintToServer("DB Cleaning: Experimental");
 	
-	if (!SQL_FastQuery(dbc, "ALTER TABLE `steam` CHANGE `rank` `rank` INT(9) NULL DEFAULT NULL"))
-	{
-		new String:error0[255]
-		SQL_GetError(dbc, error0, sizeof(error0))
-		if(printToServer == 1) PrintToServer("Failed to query (error: %s)", error0)
-	}
+	//Add warning message for users to use the updated tables.
+	//ALTER TABLE `steam` CHANGE `rank` `rank` INT(11) NULL DEFAULT NULL;
+
 	if( dbCleaning == 0 ) return;
 
 	if (!SQL_FastQuery(dbc, "DELETE FROM steam WHERE rank = 100"))
@@ -315,6 +314,7 @@ public Action:Timer_Cache(Handle:timer)
 	
 	new maxclients = GetMaxClients();
 	int skipped = 0;
+
 	while(!IsClientInGame(1+cacheCurrentClient%maxclients) && skipped < 9)
 	{
 		rankCacheValidate[1+cacheCurrentClient%maxclients] = 0; //invalidate clients not in the game
@@ -328,7 +328,7 @@ public Action:Timer_Cache(Handle:timer)
 	else{
 		if(activeThreads > 12) return Plugin_Continue;
 	}
-
+	if( rankCacheValidate[1+cacheCurrentClient%maxclients] == 1 ) return Plugin_Continue; //if they are already in the cache there is no need to recache them
 	if( 1+cacheCurrentClient%maxclients  > maxclients) return Plugin_Continue;
 	if(!IsClientConnected(1+cacheCurrentClient%maxclients))	return Plugin_Continue;
 	if(!IsClientAuthorized(1+cacheCurrentClient%maxclients)) return Plugin_Continue;
@@ -512,10 +512,12 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 			SQL_GetError(dbt, errorc, sizeof(errorc));
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
-		activeThreads++;
-		SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
-		activeThreads++;
-		SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
+		if( setRankOnDisconnectOnly == 1 ) {
+			activeThreads++;
+			SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
+			activeThreads++;
+			SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
+		}
 	}
 	else
 	{
@@ -534,10 +536,12 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 			SQL_GetError(dbt, errorc, sizeof(errorc));
 			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
 		}
-		activeThreads++;
-		SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
-		activeThreads++;
-		SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
+		if( setRankOnDisconnectOnly == 1 ) {		
+			activeThreads++;
+			SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
+			activeThreads++;
+			SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
+		}
 		updateName(steamId1, name1); //make sure the users name is in the DB
 		updateName(steamId2, name2);
 		
@@ -754,6 +758,12 @@ public int GetUseMaxThreadsConvar()
 	sm_simplecsgoranks_useMaxThreads.GetString(buffer, 128)
 	return (StringToInt(buffer) ? StringToInt(buffer) : 0 );
 }
+public int GetSetRankOnDisconnectOnlyConvar()
+{
+	char buffer[128]
+	sm_simplecsgoranks_setRankOnDisconnectOnly.GetString(buffer, 128)
+	return (StringToInt(buffer) ? StringToInt(buffer) : 0 );
+}
 public int GetModeConvar()
 {
 	char buffer[128]
@@ -806,6 +816,7 @@ public Action:Timer_Verify(Handle:timer)
 	PrintToServer("sm_simplecsgoranks_ffa %d", gameType);
 	PrintToServer("sm_simplecsgoranks_useSlowCache %d", useSlowCache);
 	PrintToServer("sm_simplecsgoranks_useMaxThreads %d", useMaxThreads);
+	PrintToServer("sm_simplecsgoranks_setRankOnDisconnectOnly %d", setRankOnDisconnectOnly);
 	PrintToServer("sm_simplecsgoranks_mode %d", immediateMode);
 	PrintToServer("sm_simplecsgoranks_higher_rank_gap %d", higherRankThreshold);
 	PrintToServer("sm_simplecsgoranks_higher_rank_additional %d", higherRankFactor);
@@ -858,6 +869,7 @@ public OnConfigsExecuted()
 
 	if(GetFFAConvar()) gameType = GetFFAConvar();
 	if(GetUseMaxThreadsConvar()) useMaxThreads = GetUseMaxThreadsConvar();
+	if(GetSetRankOnDisconnectOnlyConvar()) setRankOnDisconnectOnly = GetSetRankOnDisconnectOnlyConvar();
 	if(GetUseSlowCacheConvar()) useSlowCache = GetUseSlowCacheConvar();
 	if(GetModeConvar()) immediateMode = GetModeConvar();
 
@@ -876,6 +888,7 @@ public OnPluginStart()
 	sm_simplecsgoranks_ffa =  CreateConVar("sm_simplecsgoranks_ffa", "0", "Enables free for all mode.")
 	sm_simplecsgoranks_mode = CreateConVar("sm_simplecsgoranks_mode", "0", "(EXPERIMENTAL) Sets the mode. (0) is rounds mode. (1) is immediate mode. Immediate mode is useful for deathmatch type games.")
 	sm_simplecsgoranks_useMaxThreads = CreateConVar("sm_simplecsgoranks_useMaxThreads", "0", "(EXPERIMENTAL) Allows more threads than usual. Might be useful for servers with a large number of players.")
+	sm_simplecsgoranks_setRankOnDisconnectOnly = CreateConVar("sm_simplecsgoranks_setRankOnDisconnectOnly", "0", "(EXPERIMENTAL) Disables database rank updates until the player disconnects. Should reduce database load at the cost of ranks being lost if the server crashes. May increase the number of cache faults.")
 	sm_simplecsgoranks_useSlowCache = CreateConVar("sm_simplecsgoranks_useSlowCache", "1", "Limit the rate at which the cache updates its data.")
 
 
@@ -897,6 +910,7 @@ public OnPluginStart()
 	sm_simplecsgoranks_higher_rank_gap.Flags = flags;
 	sm_simplecsgoranks_mode.Flags = flags;
 	sm_simplecsgoranks_useMaxThreads.Flags = flags;
+	sm_simplecsgoranks_setRankOnDisconnectOnly.Flags = flags;
 	sm_simplecsgoranks_useSlowCache.Flags = flags;
 	sm_simplecsgoranks_ffa.Flags = flags;
 
