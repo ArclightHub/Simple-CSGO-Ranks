@@ -106,7 +106,7 @@ public void setRank(int steamId, int rank, int client) //done
 //adds the given number of points to the given user
 public void addRank(int steamId, int points, int client)
 {
-	setRank(steamId, (getRankCached(steamId, 0, 0, 0) + points), client);
+	setRank(steamId, (getRankCached(steamId, 0, 0) + points), client);
 }
 
 public void purgeOldUsers() 
@@ -214,7 +214,7 @@ public OnClientPostAdminCheck(client){
 }
 
 public OnClientDisconnect(client){
-	setRank(getSteamIdNumber(client), (getRankCached(getSteamIdNumber(client), 0, 0, 0)), client); //fallback write out at end, sometimes the threaded queries fail so this should help.
+	setRank(getSteamIdNumber(client), (getRankCached(getSteamIdNumber(client), 0, 0)), client); //fallback write out at end, sometimes the threaded queries fail so this should help.
 	rankCacheValidate[client] = 0;
 	return;
 }
@@ -341,7 +341,7 @@ public Action:Timer_Cache(Handle:timer)
 	}
 	
 		
-	if(printToServer == 1) PrintToServer("Client: %d", 1+cacheCurrentClient%maxclients);
+	if(printToServer == 1) PrintToServer("Caching Client: %d", 1+cacheCurrentClient%maxclients);
 	
 	decl String:steamId[64];
 	GetClientAuthId(1+cacheCurrentClient%maxclients, AuthId_Steam3, steamId, sizeof(steamId));
@@ -366,10 +366,9 @@ public Action:Timer_Cache(Handle:timer)
 	return Plugin_Continue;
 }
 
-public int getRankCached(int steamId, int usesClient, int client, int invalidateCache)
+public int getRankCached(int steamId, int usesClient, int client)
 {
 //needs all entered, if it fails to lookup from just client it falls back to the existing method
-//getRankCached(id, usesclient, client, invalidateCache)
 	int currentClient = -1;
 	if(usesClient == 1){ 
 		currentClient = client;
@@ -396,7 +395,6 @@ public int getRankCached(int steamId, int usesClient, int client, int invalidate
 		else return getRank(steamId , -1);
 	}
 	else{
-		if(invalidateCache == 1) rankCacheValidate[currentClient] = 0; //invalidate the cached copy, this flag is used when the query changes the rank
 		if(printToServer == 1) PrintToServer("Returning cached rank %d", rankCache[currentClient]);
 		return rankCache[currentClient]; //return the cached copy
 	}
@@ -527,8 +525,8 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 		GetClientName(client, name1, sizeof(name1)); //shooter
 		GetClientName(client2, name2, sizeof(name2)); //got shot
 		
-		if(GetClientTeam(client) == 3) Client_PrintToChatAll(false,"{B}%s (%d) {R}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
-		else Client_PrintToChatAll(false,"{R}%s (%d) {B}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client, 0), name2, getRankCached(StringToInt(ssteamId2), 1, client2, 0) );
+		if(GetClientTeam(client) == 3) Client_PrintToChatAll(false,"{B}%s (%d) {R}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client), name2, getRankCached(StringToInt(ssteamId2), 1, client2) );
+		else Client_PrintToChatAll(false,"{R}%s (%d) {B}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client), name2, getRankCached(StringToInt(ssteamId2), 1, client2) );
 		
 		if (dbt == INVALID_HANDLE)
 		{
@@ -700,8 +698,8 @@ public void copyOut()
 				GetClientName(client, name1, sizeof(name1)); //shooter
 				GetClientName(client2, name2, sizeof(name2)); //got shot
 			
-				if(GetClientTeam(client) == 3) Client_PrintToChatAll(false, "Kill #%d {BR}%s (%d) {O}killed {R}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
-				else Client_PrintToChatAll(false, "Kill #%d {RB}%s (%d) {O}killed {B}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client, 0), name2, getRankCached(StringToInt(steamId2), 1, client2, 0) );			
+				if(GetClientTeam(client) == 3) Client_PrintToChatAll(false, "Kill #%d {BR}%s (%d) {O}killed {R}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client), name2, getRankCached(StringToInt(steamId2), 1, client2) );			
+				else Client_PrintToChatAll(false, "Kill #%d {RB}%s (%d) {O}killed {B}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client), name2, getRankCached(StringToInt(steamId2), 1, client2) );			
 				
 				updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
 				updateName(StringToInt(steamId2), name2);
@@ -727,7 +725,7 @@ public void copyOut()
 					//add +2 for assist
 					addRank(StringToInt(steamId4), 2, client3);
 				
-					Client_PrintToChatAll(false, "{B}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3, 0) );
+					Client_PrintToChatAll(false, "{B}%s (%d) Assisted this kill.", name4,  getRankCached(StringToInt(steamId4), 1, client3) );
 				}
 			}
 		}
@@ -1058,7 +1056,7 @@ public updateRanksText(){
 				ReplaceString(steamId1, sizeof(steamId1), "[U:1:", "", false);
 				ReplaceString(steamId1, sizeof(steamId1), "[U:0:", "", false);
 				ReplaceString(steamId1, sizeof(steamId1), "]", "", false);
-				ranksText[i] = getRankCached(StringToInt(steamId1), 1, i, 0);
+				ranksText[i] = getRankCached(StringToInt(steamId1), 1, i);
 				getRank2(StringToInt(steamId1), i);
 			}
 		}
