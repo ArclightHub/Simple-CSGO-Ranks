@@ -28,7 +28,7 @@ SET time_zone = "+00:00";
 
 CREATE TABLE IF NOT EXISTS `steam` (
   `steamId` char(65) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '',
-  `rank` char(65) DEFAULT NULL,
+  `rank` INT(11) NULL DEFAULT NULL,
   `age` char(65) DEFAULT NULL,
   PRIMARY KEY (`steamId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
