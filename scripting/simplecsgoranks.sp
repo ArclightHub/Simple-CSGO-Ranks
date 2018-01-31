@@ -3,7 +3,7 @@
 #include <cstrike>
 #include <smlib>
 
-#define PLUGIN_VERSION "0.2.5Dev2"
+#define PLUGIN_VERSION "0.2.5Dev18"
 
 //Global Variables, do NOT touch.
 int shotPlayers = -1;
@@ -43,6 +43,8 @@ int shot[65];
 int ids[65];
 new String:idsNames[65][65];
 
+int pointsChange;
+
 //convars
 ConVar sm_simplecsgoranks_mode;
 ConVar sm_simplecsgoranks_ffa;
@@ -61,9 +63,9 @@ ConVar sm_simplecsgoranks_debug;
 
 //editable defines
 int printToServer = 0;
-int higherRankThreshold = 200; //how many points above a user should me considered much higher
-int higherRankFactor = 5; //if the shot user is much higher than the user who shot them the higher ranked user should lose more rank.
-int killPoints = 5;
+int higherRankThreshold = 1000; //how many points above a user should me considered much higher
+int higherRankFactor = 1; //if the shot user is much higher than the user who shot them the higher ranked user should lose more rank.
+int killPoints = 1;
 int startRank = 100; //new users start with this rank.
 int dbCleaning = 0;
 
@@ -106,6 +108,8 @@ public void setRank(int steamId, int rank, int client) //done
 //adds the given number of points to the given user
 public void addRank(int steamId, int points, int client)
 {
+	rankCache[client] += points;
+	//setRank(int steamId, int rank, int client)
 	setRank(steamId, (getRankCached(steamId, 0, 0) + points), client);
 }
 
@@ -477,74 +481,100 @@ public void userShot(int steamId1, int steamId2, int client, int client2) //done
 	decl String:ssteamId2[65];
 	decl String:query[440];
 	decl String:query2[440];
+	int difference = 0;
+	float newFactor;
 
 	IntToString(GetTime(),stime,sizeof(stime));
 	IntToString(steamId1,ssteamId1,sizeof(ssteamId1));
 	IntToString(steamId2,ssteamId2,sizeof(ssteamId2));
 	
 	if(rankCacheValidate[client] == 1 && rankCacheValidate[client2] == 1){
-		if(rankCache[client]+higherRankThreshold < rankCache[client2]){
-			rankCache[client] += killPoints+higherRankFactor; 
-			rankCache[client2] -= killPoints+1+higherRankFactor;
+		//tempfix
+		higherRankFactor = 0;
+		higherRankThreshold = 250;
+		//tempfix
+		
+		if(rankCache[client] < 0) rankCache[client] = 0;
+		if(rankCache[client2] < 0) rankCache[client2] = 0;
+		
+		if(rankCache[client2] > 0){
+			//rankCache[client]+higherRankThreshold < rankCache[client2]
+			difference = rankCache[client] - rankCache[client2]; // 1000 - 2000 = -1000
+			difference += higherRankThreshold; // -1000 + 2000 = 1000
+			
+			newFactor = float(difference);
+			newFactor = FloatAbs(newFactor);
+			newFactor *= 0.0015;
+			higherRankFactor = RoundToCeil(newFactor);
+			if(higherRankFactor > 15) higherRankFactor = 15;
+			if(difference < 0){
+				rankCache[client] += killPoints+higherRankFactor; 
+				//rankCache[client2] -= killPoints+1+higherRankFactor;
+				rankCache[client2] -= killPoints+higherRankFactor+1; //tempfix
+				pointsChange = killPoints+higherRankFactor;
+			}
+			else{
+				rankCache[client] += killPoints; 
+				//rankCache[client2] -= killPoints+1;
+				rankCache[client2] -= killPoints;
+				pointsChange = killPoints;
+			}
+		} 
+		else {
+			pointsChange = 0;
 		}
-		else{
-			rankCache[client] += killPoints; 
-			rankCache[client2] -= killPoints+1;
-		}
-	}
-	else{
-		rankCacheValidate[client] = 0;
-		rankCacheValidate[client2] = 0;
-	}
+		
+		if(rankCache[client] < 0) rankCache[client] = 0;
+		if(rankCache[client2] < 0) rankCache[client2] = 0;
+		
+		Format(query, sizeof(query), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT rank+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT rank FROM steam WHERE steamId = %s LIMIT 1) THEN rank+%d+%d ELSE rank+%d END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId1, stime, ssteamId1);
+		Format(query2, sizeof(query2), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT rank+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank FROM steam WHERE steamId = %s LIMIT 1) THEN rank-%d-%d ELSE rank-%d-1 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId2, stime, ssteamId2);
 
-
-	Format(query, sizeof(query), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT rank+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT rank FROM steam WHERE steamId = %s LIMIT 1) THEN rank+%d+%d ELSE rank+%d END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId1, stime, ssteamId1);
-	Format(query2, sizeof(query2), "UPDATE steam SET steam.rank = (SELECT * FROM (SELECT CASE WHEN (SELECT rank+%d FROM steam WHERE steamId = %s LIMIT 1) < (SELECT cast(rank FROM steam WHERE steamId = %s LIMIT 1) THEN rank-%d-%d ELSE rank-%d-1 END FROM steam WHERE steamId = %s LIMIT 1) as b), steam.age = %s  WHERE steamId = %s LIMIT 1", higherRankThreshold, ssteamId1, ssteamId2, killPoints, higherRankFactor, killPoints, ssteamId2, stime, ssteamId2);
-
-	if(printToServer == 1) PrintToServer("query: %s", query);	
-	if( immediateMode == 0 )
-	{
-		if (dbt == INVALID_HANDLE)
+		if(printToServer == 1) PrintToServer("query: %s", query);	
+		if( immediateMode == 0 )
 		{
-			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-			SQL_GetError(dbt, errorc, sizeof(errorc));
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+			if (dbt == INVALID_HANDLE)
+			{
+				dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+				SQL_GetError(dbt, errorc, sizeof(errorc));
+				if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+			}
+			if( setRankOnDisconnectOnly == 0 ) {
+				activeThreads++;
+				SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
+				activeThreads++;
+				SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
+			}
+			else PrintToServer("Skipping DB Update");
 		}
-		if( setRankOnDisconnectOnly == 0 ) {
-			activeThreads++;
-			SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
-			activeThreads++;
-			SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
-		}
-		else PrintToServer("Skipping DB Update");
-	}
-	else
-	{
-		//Threaded and immediate
-		decl String:name1[64]; //shooter
-		decl String:name2[64]; //got shot
-		GetClientName(client, name1, sizeof(name1)); //shooter
-		GetClientName(client2, name2, sizeof(name2)); //got shot
-		
-		if(GetClientTeam(client) == 3) Client_PrintToChatAll(false,"{B}%s (%d) {R}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client), name2, getRankCached(StringToInt(ssteamId2), 1, client2) );
-		else Client_PrintToChatAll(false,"{R}%s (%d) {B}killed %s (%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client), name2, getRankCached(StringToInt(ssteamId2), 1, client2) );
-		
-		if (dbt == INVALID_HANDLE)
+		else
 		{
-			dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
-			SQL_GetError(dbt, errorc, sizeof(errorc));
-			if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+			//Threaded and immediate
+			decl String:name1[64]; //shooter
+			decl String:name2[64]; //got shot
+			GetClientName(client, name1, sizeof(name1)); //shooter
+			GetClientName(client2, name2, sizeof(name2)); //got shot
+			
+			if(GetClientTeam(client) == 3) Client_PrintToChatAll(false,"{B}%s (%d) {R}killed %s (%d) - (+%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client), name2, getRankCached(StringToInt(ssteamId2), 1, client2), pointsChange );
+			else Client_PrintToChatAll(false,"{R}%s (%d) {B}killed %s (%d) - (+%d)", name1, getRankCached(StringToInt(ssteamId1), 1, client), name2, getRankCached(StringToInt(ssteamId2), 1, client2), pointsChange );
+			
+			if (dbt == INVALID_HANDLE)
+			{
+				dbt = SQL_Connect(databaseName, false, errorc, sizeof(errorc));
+				SQL_GetError(dbt, errorc, sizeof(errorc));
+				if(printToServer == 1) PrintToServer("Failed to query (error: %s)", errorc);
+			}
+			if( setRankOnDisconnectOnly == 0 ) {		
+				activeThreads++;
+				SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
+				activeThreads++;
+				SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
+			}
+			else PrintToServer("Skipping DB Update");
+			updateName(steamId1, name1); //make sure the users name is in the DB
+			updateName(steamId2, name2);
+			
 		}
-		if( setRankOnDisconnectOnly == 0 ) {		
-			activeThreads++;
-			SQL_TQuery(dbt, updateThread, query, 0, DBPrio_Normal);
-			activeThreads++;
-			SQL_TQuery(dbt, updateThread, query2, 0, DBPrio_Normal);
-		}
-		else PrintToServer("Skipping DB Update");
-		updateName(steamId1, name1); //make sure the users name is in the DB
-		updateName(steamId2, name2);
-		
 	}
 }
 
@@ -695,8 +725,8 @@ public void copyOut()
 				GetClientName(client, name1, sizeof(name1)); //shooter
 				GetClientName(client2, name2, sizeof(name2)); //got shot
 			
-				if(GetClientTeam(client) == 3) Client_PrintToChatAll(false, "Kill #%d {BR}%s (%d) {O}killed {R}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client), name2, getRankCached(StringToInt(steamId2), 1, client2) );			
-				else Client_PrintToChatAll(false, "Kill #%d {RB}%s (%d) {O}killed {B}%s (%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client), name2, getRankCached(StringToInt(steamId2), 1, client2) );			
+				if(GetClientTeam(client) == 3) Client_PrintToChatAll(false, "Kill #%d {BR}%s (%d) {O}killed {R}%s (%d) - (+%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client), name2, getRankCached(StringToInt(steamId2), 1, client2), pointsChange );			
+				else Client_PrintToChatAll(false, "Kill #%d {RB}%s (%d) {O}killed {B}%s (%d) - (+%d)", (shotCountdown+1), name1, getRankCached(StringToInt(steamId1), 1, client), name2, getRankCached(StringToInt(steamId2), 1, client2), pointsChange );			
 				
 				updateName(StringToInt(steamId1), name1); //make sure the users name is in the DB
 				updateName(StringToInt(steamId2), name2);
@@ -1065,8 +1095,15 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 	char ranksChatCommands[][] = { "!rank", "rank", "!ranks", "ranks" };
 	for (int i = 0; i < sizeof(ranksChatCommands); i++) {
 	if (strcmp(args[0], ranksChatCommands[i], false) == 0) {
-			GetClientName(client, name, sizeof(name));
-			Client_PrintToChatAll(false, "{G}%s's {B}Score: %d | Rank: %s", name, ranksText[client],ranksText2[client]); //Use this to change the !ranks text
+			if(rankCacheValidate[client] != 0){
+				if(rankCache[client] < 100){
+					GetClientName(client, name, sizeof(name));
+					Client_PrintToChatAll(false, "{G}%s's score is too low to be ranked.", name); //Use this to change the !ranks text
+				} else {
+					GetClientName(client, name, sizeof(name));
+					Client_PrintToChatAll(false, "{G}%s's {B}Score: %d | Rank: %s", name, ranksText[client],ranksText2[client]); //Use this to change the !ranks text
+				}
+			}
 		}
 	}
 	if( (strcmp(args[0], "!top10", false) == 0) || (strcmp(args[0], "!top", false) == 0) || (strcmp(args[0], "top", false) == 0) ){
